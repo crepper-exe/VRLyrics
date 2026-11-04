@@ -5,8 +5,9 @@ using System.Windows.Interop;
 namespace VRLyrics.App.Interop;
 
 /// <summary>
-/// Applies Windows 11 Fluent dark titlebar, rounded window corners, and custom caption color via <c>dwmapi.dll</c>.
-/// Safely no-ops on older Windows builds.
+/// Applies Windows 11 native DWM attributes (dark title bar, rounded window corners,
+/// and low-saturation charcoal frame colors) to any WPF <see cref="Window"/>.
+/// Gracefully no-ops on older Windows builds.
 /// </summary>
 internal static class Win11BackdropHelper
 {
@@ -19,7 +20,11 @@ internal static class Win11BackdropHelper
     private const int DWMWCP_ROUND = 2;
 
     [DllImport("dwmapi.dll", PreserveSig = true)]
-    private static extern int DwmSetWindowAttribute(nint hwnd, int attr, ref int attrValue, int attrSize);
+    private static extern int DwmSetWindowAttribute(
+        nint hwnd,
+        int attr,
+        ref int attrValue,
+        int attrSize);
 
     public static void ApplyFluentDarkWindowFrame(Window window)
     {
@@ -34,16 +39,16 @@ internal static class Win11BackdropHelper
             var roundCorners = DWMWCP_ROUND;
             _ = DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref roundCorners, sizeof(int));
 
-            // COLORREF is 0x00BBGGRR: #0B0F19 -> R=0x0B, G=0x0F, B=0x19 -> 0x00190F0B
-            var captionColor = 0x00190F0B;
+            // COLORREF is 0x00BBGGRR: #141619 -> R=0x14, G=0x16, B=0x19 -> 0x00191614
+            var captionColor = 0x00191614;
             _ = DwmSetWindowAttribute(hwnd, DWMWA_CAPTION_COLOR, ref captionColor, sizeof(int));
 
-            // Subtle border #23304A -> R=0x23, G=0x30, B=0x4A -> 0x004A3023
-            var borderColor = 0x004A3023;
+            // Subtle border #292D34 -> R=0x29, G=0x2D, B=0x34 -> 0x00342D29
+            var borderColor = 0x00342D29;
             _ = DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref borderColor, sizeof(int));
 
-            // Title text #F1F5F9 -> R=0xF1, G=0xF5, B=0xF9 -> 0x00F9F5F1
-            var textColor = 0x00F9F5F1;
+            // Title text #E4E6EA -> R=0xE4, G=0xE6, B=0xEA -> 0x00EAE6E4
+            var textColor = 0x00EAE6E4;
             _ = DwmSetWindowAttribute(hwnd, DWMWA_TEXT_COLOR, ref textColor, sizeof(int));
         }
         catch

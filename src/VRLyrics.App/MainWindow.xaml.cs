@@ -80,6 +80,7 @@ public partial class MainWindow : Window
     {
         var preferred = new[]
         {
+            "Google Sans",
             "Microsoft YaHei UI",
             "Microsoft YaHei",
             "DengXian",
@@ -112,7 +113,8 @@ public partial class MainWindow : Window
             var btn = new System.Windows.Controls.Button
             {
                 Style = (Style)FindResource("ActionButtonStyle"),
-                Margin = new Thickness(0, 0, 8, 8),
+                Margin = new Thickness(0, 0, 10, 10),
+                Padding = new Thickness(14, 8, 14, 8),
                 ToolTip = preset.Description,
                 Tag = preset,
             };
@@ -124,7 +126,7 @@ public partial class MainWindow : Window
                 Height = 14,
                 CornerRadius = new CornerRadius(7),
                 Margin = new Thickness(0, 0, 7, 0),
-                BorderBrush = new SolidColorBrush(Colors.White),
+                BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(82, 90, 102)),
                 BorderThickness = new Thickness(1),
                 Background = CreateGradientPreviewBrush(preset.SungTopColorHex, preset.SungBottomColorHex)
             };
@@ -280,17 +282,19 @@ public partial class MainWindow : Window
     {
         var vrConnected = _runtime.Overlay.IsVrConnected;
         var vrMsg = _runtime.Overlay.VrStatusMessage;
-        VrStatusText.Text = vrConnected ? $"● {vrMsg}" : $"○ {vrMsg}";
+        VrStatusText.Text = vrConnected ? "已连接 SteamVR" : "未连接 SteamVR";
         VrStatusBadge.ToolTip = vrMsg;
         VrStatusBadge.Background = new SolidColorBrush(vrConnected
-            ? System.Windows.Media.Color.FromRgb(14, 52, 46)
-            : System.Windows.Media.Color.FromRgb(42, 34, 20));
+            ? System.Windows.Media.Color.FromRgb(29, 38, 33)
+            : System.Windows.Media.Color.FromRgb(37, 34, 28));
         VrStatusBadge.BorderBrush = new SolidColorBrush(vrConnected
-            ? System.Windows.Media.Color.FromRgb(16, 185, 129)
-            : System.Windows.Media.Color.FromRgb(217, 119, 6));
-        VrStatusText.Foreground = new SolidColorBrush(vrConnected
-            ? System.Windows.Media.Color.FromRgb(110, 231, 183)
-            : System.Windows.Media.Color.FromRgb(252, 211, 77));
+            ? System.Windows.Media.Color.FromRgb(67, 94, 77)
+            : System.Windows.Media.Color.FromRgb(87, 77, 60));
+        var statusFg = new SolidColorBrush(vrConnected
+            ? System.Windows.Media.Color.FromRgb(180, 203, 187)
+            : System.Windows.Media.Color.FromRgb(210, 197, 172));
+        VrStatusText.Foreground = statusFg;
+        VrStatusIcon.Fill = statusFg;
 
         var app = _runtime.Media.CurrentAppId;
         var track = _runtime.Media.CurrentTrack;
@@ -470,8 +474,8 @@ public partial class MainWindow : Window
             : Visibility.Collapsed;
 
         LblHandModeTitle.Text = mode == OverlayAttachmentMode.LeftHand
-            ? "⌚ 左手腕 / 左手柄跟随位置与角度"
-            : "⌚ 右手腕 / 右手柄跟随位置与角度";
+            ? "左手腕 / 左手柄跟随位置与角度"
+            : "右手腕 / 右手柄跟随位置与角度";
     }
 
     private void OnPlacementSliderChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -1009,8 +1013,14 @@ public partial class MainWindow : Window
             (NavSystem, "ui_page_4_system.png"),
         };
 
+        var prevDemo = _runtime.ForceDemoLoop;
+        if (_runtime.Media.CurrentTrack is null)
+        {
+            _runtime.ForceDemoLoop = true;
+            ChkDemoLoop.IsChecked = true;
+        }
         // Wait briefly so the live preview renders its initial frame
-        await Task.Delay(400);
+        await Task.Delay(450);
 
         foreach (var (btn, fileName) in navButtons)
         {
@@ -1033,6 +1043,7 @@ public partial class MainWindow : Window
             SaveElementScreenshot(picker.Content as FrameworkElement, System.IO.Path.Combine(dumpDir, "ui_dialog_color_picker.png"));
         picker.Close();
 
+        _runtime.ForceDemoLoop = prevDemo;
         NavPlacement.IsChecked = true;
         UpdateLayout();
     }

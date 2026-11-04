@@ -34,20 +34,19 @@ public partial class ColorPickerWindow : Window
 
     private void BuildSwatchButtons()
     {
+        var swatchStyle = (Style)FindResource("SwatchButtonStyle");
         foreach (var hex in PresetSwatches)
         {
             var sk = ColorParseHelper.Parse(hex, SKColors.White);
             var btn = new System.Windows.Controls.Button
             {
-                Width = 34,
+                Style = swatchStyle,
+                Width = 35,
                 Height = 28,
-                Margin = new Thickness(0, 0, 8, 8),
+                Margin = new Thickness(0, 0, 7, 7),
                 ToolTip = hex,
                 Tag = hex,
-                Cursor = System.Windows.Input.Cursors.Hand,
                 Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(sk.Alpha, sk.Red, sk.Green, sk.Blue)),
-                BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(71, 85, 105)),
-                BorderThickness = new Thickness(1)
             };
             btn.Click += (_, _) => SetFromHex(hex);
             SwatchWrapPanel.Children.Add(btn);

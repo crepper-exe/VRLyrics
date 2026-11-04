@@ -16,6 +16,10 @@
   <ItemGroup>
     <Resource Include="Assets\app.ico" />
     <Resource Include="Assets\logo.png" />
+    <Resource Include="Assets\Fonts\GoogleSans-latin-400.ttf" />
+    <Resource Include="Assets\Fonts\GoogleSans-latin-500.ttf" />
+    <Resource Include="Assets\Fonts\GoogleSans-latin-700.ttf" />
+    <None Include="Assets\Fonts\OFL.txt" CopyToOutputDirectory="Never" />
   </ItemGroup>
 
   <ItemGroup>
