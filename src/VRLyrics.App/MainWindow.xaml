@@ -1,11 +1,11 @@
 <Window x:Class="VRLyrics.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="VRLyrics - SteamVR 实时歌词设置"
+        Title="VRLyrics · SteamVR 实时歌词控制中心"
         Icon="pack://application:,,,/Assets/app.ico"
-        Width="1040"
-        Height="820"
-        MinWidth="880"
+        Width="1120"
+        Height="840"
+        MinWidth="960"
         MinHeight="680"
         WindowStartupLocation="CenterScreen"
         Background="#0B0F19"
@@ -14,18 +14,21 @@
 
     <Window.Resources>
         <SolidColorBrush x:Key="CardBgBrush" Color="#131B2E" />
-        <SolidColorBrush x:Key="CardBorderBrush" Color="#24324D" />
-        <SolidColorBrush x:Key="AccentBrush" Color="#00D2FF" />
+        <SolidColorBrush x:Key="CardBorderBrush" Color="#22304A" />
+        <SolidColorBrush x:Key="SubCardBgBrush" Color="#0E1525" />
+        <SolidColorBrush x:Key="AccentBrush" Color="#38BDF8" />
         <SolidColorBrush x:Key="PrimaryTextBrush" Color="#F1F5F9" />
         <SolidColorBrush x:Key="MutedTextBrush" Color="#94A3B8" />
-        <SolidColorBrush x:Key="InputBgBrush" Color="#0D1322" />
+        <SolidColorBrush x:Key="InputBgBrush" Color="#0A101D" />
 
+        <!-- WinUI 3 Fluent Action Button -->
         <Style x:Key="ActionButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="#1E293B" />
             <Setter Property="Foreground" Value="#F1F5F9" />
             <Setter Property="BorderBrush" Value="#334155" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Padding" Value="12,6" />
+            <Setter Property="FontSize" Value="12.5" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -40,11 +43,11 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#283750" />
-                                <Setter TargetName="Bd" Property="BorderBrush" Value="#00D2FF" />
+                                <Setter TargetName="Bd" Property="Background" Value="#27364F" />
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#38BDF8" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#172133" />
+                                <Setter TargetName="Bd" Property="Background" Value="#162032" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -55,6 +58,7 @@
         <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource ActionButtonStyle}">
             <Setter Property="Background" Value="#0284C7" />
             <Setter Property="BorderBrush" Value="#38BDF8" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
 
@@ -65,700 +69,929 @@
         </Style>
 
         <Style x:Key="DarkTextBoxStyle" TargetType="TextBox">
-            <Setter Property="Background" Value="#0D1322" />
+            <Setter Property="Background" Value="#0A101D" />
             <Setter Property="Foreground" Value="#F1F5F9" />
             <Setter Property="BorderBrush" Value="#334155" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Padding" Value="8,4" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
-            <Setter Property="CaretBrush" Value="#00D2FF" />
+            <Setter Property="CaretBrush" Value="#38BDF8" />
         </Style>
 
-        <Style TargetType="CheckBox">
-            <Setter Property="Foreground" Value="#E2E8F0" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-            <Setter Property="Margin" Value="0,4" />
-            <Setter Property="Cursor" Value="Hand" />
-        </Style>
-
-        <Style TargetType="RadioButton">
+        <!-- WinUI 3 Fluent Pill ToggleSwitch (replaces legacy square CheckBox) -->
+        <Style x:Key="FluentToggleSwitchStyle" TargetType="CheckBox">
             <Setter Property="Foreground" Value="#F1F5F9" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="13" />
             <Setter Property="Cursor" Value="Hand" />
-        </Style>
-
-        <Style TargetType="Slider">
             <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Cursor" Value="Hand" />
-        </Style>
-
-        <Style TargetType="TabItem">
-            <Setter Property="Foreground" Value="#94A3B8" />
-            <Setter Property="FontSize" Value="14" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Padding" Value="18,9" />
-            <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
                 <Setter.Value>
-                    <ControlTemplate TargetType="TabItem">
-                        <Border x:Name="TabBorder"
-                                Background="#101726"
-                                BorderBrush="#24324D"
-                                BorderThickness="1,1,1,0"
-                                CornerRadius="8,8,0,0"
-                                Margin="0,0,6,0"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
+                    <ControlTemplate TargetType="CheckBox">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Background="Transparent">
+                            <ContentPresenter VerticalAlignment="Center" Margin="0,0,10,0" RecognizesAccessKey="True" />
+                            <Border x:Name="SwitchTrack"
+                                    Width="42"
+                                    Height="22"
+                                    CornerRadius="11"
+                                    Background="#1E293B"
+                                    BorderBrush="#64748B"
+                                    BorderThickness="1.5">
+                                <Ellipse x:Name="SwitchThumb"
+                                         Width="14"
+                                         Height="14"
+                                         Fill="#CBD5E1"
+                                         HorizontalAlignment="Left"
+                                         VerticalAlignment="Center"
+                                         Margin="3,0,0,0" />
+                            </Border>
+                        </StackPanel>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="TabBorder" Property="Background" Value="#131B2E" />
-                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="#00D2FF" />
-                                <Setter Property="Foreground" Value="#38BDF8" />
-                            </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Foreground" Value="#F8FAFC" />
+                                <Setter TargetName="SwitchTrack" Property="BorderBrush" Value="#94A3B8" />
+                                <Setter TargetName="SwitchThumb" Property="Fill" Value="#FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="SwitchTrack" Property="Background" Value="#0284C7" />
+                                <Setter TargetName="SwitchTrack" Property="BorderBrush" Value="#38BDF8" />
+                                <Setter TargetName="SwitchThumb" Property="Fill" Value="#FFFFFF" />
+                                <Setter TargetName="SwitchThumb" Property="HorizontalAlignment" Value="Right" />
+                                <Setter TargetName="SwitchThumb" Property="Margin" Value="0,0,3,0" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <Style TargetType="CheckBox" BasedOn="{StaticResource FluentToggleSwitchStyle}" />
+
+        <!-- WinUI 3 NavigationView Sidebar Item -->
+        <Style x:Key="NavItemRadioStyle" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="#94A3B8" />
+            <Setter Property="FontSize" Value="13.5" />
+            <Setter Property="Margin" Value="0,2" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="NavBd"
+                                Background="Transparent"
+                                CornerRadius="8"
+                                Padding="12,10">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border x:Name="IndicatorBar"
+                                        Width="3.5"
+                                        Height="18"
+                                        CornerRadius="2"
+                                        Background="Transparent"
+                                        VerticalAlignment="Center"
+                                        Margin="0,0,10,0" />
+                                <ContentPresenter Grid.Column="1" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="NavBd" Property="Background" Value="#162033" />
+                                <Setter Property="Foreground" Value="#E2E8F0" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="NavBd" Property="Background" Value="#1A2740" />
+                                <Setter TargetName="IndicatorBar" Property="Background" Value="#38BDF8" />
+                                <Setter Property="Foreground" Value="#FFFFFF" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- WinUI 3 Segmented Pill Selector -->
+        <Style x:Key="SegmentedItemRadioStyle" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="#94A3B8" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Margin" Value="2" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="SegBd"
+                                Background="Transparent"
+                                BorderBrush="Transparent"
+                                BorderThickness="1"
+                                CornerRadius="7"
+                                Padding="12,8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="SegBd" Property="Background" Value="#182338" />
+                                <Setter Property="Foreground" Value="#F1F5F9" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="SegBd" Property="Background" Value="#0369A1" />
+                                <Setter TargetName="SegBd" Property="BorderBrush" Value="#38BDF8" />
+                                <Setter Property="Foreground" Value="#FFFFFF" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- WinUI 3 SettingsCard Container -->
+        <Style x:Key="SettingsCardBorderStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource CardBgBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="18,14" />
+            <Setter Property="Margin" Value="0,0,0,10" />
+        </Style>
+
+        <Style TargetType="Slider" BasedOn="{StaticResource {x:Type Slider}}">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
     </Window.Resources>
 
-    <Grid Margin="18,14,18,16">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
+    <!-- ==================== ROOT WINUI 3 NAVIGATION LAYOUT ==================== -->
+    <Grid Background="#0B0F19">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="248" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
 
-        <!-- ==================== 1. TOP STATUS & ACTION BAR ==================== -->
-        <Border Grid.Row="0"
-                Background="{StaticResource CardBgBrush}"
-                BorderBrush="{StaticResource CardBorderBrush}"
-                BorderThickness="1"
-                CornerRadius="10"
-                Padding="16,12"
-                Margin="0,0,0,12">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-
-                <StackPanel Grid.Column="0" Orientation="Vertical">
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Image Source="pack://application:,,,/Assets/logo.png"
-                               Height="28"
-                               Margin="0,0,10,0"
-                               VerticalAlignment="Center"
-                               RenderOptions.BitmapScalingMode="HighQuality" />
-                        <TextBlock Text="VRLyrics" FontSize="20" FontWeight="Bold" Foreground="#38BDF8" VerticalAlignment="Center" />
-                        <TextBlock Text="SteamVR 实时歌词叠加层" FontSize="13" Foreground="{StaticResource MutedTextBrush}" VerticalAlignment="Bottom" Margin="10,0,14,2" />
-
-                        <Border x:Name="VrStatusBadge" Background="#162936" BorderBrush="#0284C7" BorderThickness="1" CornerRadius="12" Padding="10,3" Margin="0,0,8,0">
-                            <TextBlock x:Name="VrStatusText" Text="等待 SteamVR…" FontSize="12" Foreground="#7DD3FC" />
-                        </Border>
-
-                        <Border Background="#182236" BorderBrush="#334155" BorderThickness="1" CornerRadius="12" Padding="10,3">
-                            <TextBlock x:Name="PlayerStatusText" Text="播放器：未检测" FontSize="12" Foreground="#CBD5E1" />
-                        </Border>
-                    </StackPanel>
-
-                    <TextBlock x:Name="TrackAndLyricsStatusText"
-                               Text="正在等待播放曲目…"
-                               FontSize="12.5"
-                               Foreground="#94A3B8"
-                               Margin="0,6,0,0"
-                               TextTrimming="CharacterEllipsis" />
-                </StackPanel>
-
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <CheckBox x:Name="ChkOverlayEnabled"
-                              Content="显示 VR 歌词"
-                              FontWeight="SemiBold"
-                              Margin="0,0,14,0"
-                              Checked="OnOverlayEnabledChanged"
-                              Unchecked="OnOverlayEnabledChanged" />
-
-                    <CheckBox x:Name="ChkDemoLoop"
-                              Content="🎬 样式演示动画"
-                              ToolTip="开启后在预览区和VR中循环播放逐字卡拉OK演示歌词，方便暂停或无音乐时调色"
-                              Margin="0,0,14,0"
-                              Checked="OnDemoLoopChanged"
-                              Unchecked="OnDemoLoopChanged" />
-
-                    <Button Content="🔄 重新获取歌词"
-                            Style="{StaticResource ActionButtonStyle}"
-                            Margin="0,0,8,0"
-                            Click="OnReloadLyricsClick" />
-
-                    <Button Content="最小化到托盘"
-                            Style="{StaticResource ActionButtonStyle}"
-                            Margin="0,0,8,0"
-                            Click="OnMinimizeToTrayClick" />
-
-                    <Button Content="彻底退出"
-                            Style="{StaticResource DangerButtonStyle}"
-                            Click="OnExitAppClick" />
-                </StackPanel>
-            </Grid>
-        </Border>
-
-        <!-- ==================== 2. LIVE OVERLAY RENDER PREVIEW ==================== -->
-        <Border Grid.Row="1"
-                Background="#070A12"
-                BorderBrush="#24324D"
-                BorderThickness="1"
-                CornerRadius="10"
-                Padding="12,10"
-                Margin="0,0,0,12">
+        <!-- ==================== LEFT SIDEBAR (NavigationView Pane) ==================== -->
+        <Border Grid.Column="0"
+                Background="#0E1422"
+                BorderBrush="#1E293B"
+                BorderThickness="0,0,1,0"
+                Padding="14,16,14,16">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="175" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <DockPanel Grid.Row="0" Margin="2,0,2,6">
-                    <TextBlock Text="实时叠加层渲染预览（与 VR 头显内 1:1 同步）"
-                               FontSize="12"
-                               FontWeight="SemiBold"
-                               Foreground="#7DD3FC" />
-                    <TextBlock x:Name="PreviewMetaText"
-                               Text="1600×420 · 60 FPS · 配置变更即时生效"
-                               FontSize="11.5"
-                               Foreground="#64748B"
-                               HorizontalAlignment="Right" />
-                </DockPanel>
+                <!-- 1. Brand Header -->
+                <StackPanel Grid.Row="0" Margin="4,0,4,14">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Image Source="pack://application:,,,/Assets/logo.png"
+                               Height="32"
+                               Margin="0,0,10,0"
+                               RenderOptions.BitmapScalingMode="HighQuality" />
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="VRLyrics" FontSize="18" FontWeight="Bold" Foreground="#F8FAFC" />
+                            <TextBlock Text="Fluent Control Hub" FontSize="11" Foreground="#64748B" />
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
 
+                <!-- 2. Live VR & Player Status Pills -->
                 <Border Grid.Row="1"
-                        CornerRadius="8"
-                        BorderBrush="#1E293B"
+                        Background="#131C2E"
+                        BorderBrush="#22304A"
                         BorderThickness="1"
-                        ClipToBounds="True">
-                    <Border.Background>
-                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                            <GradientStop Color="#121B2E" Offset="0" />
-                            <GradientStop Color="#090D18" Offset="0.55" />
-                            <GradientStop Color="#152238" Offset="1" />
-                        </LinearGradientBrush>
-                    </Border.Background>
-                    <Image x:Name="PreviewImage"
-                           Stretch="Uniform"
-                           RenderOptions.BitmapScalingMode="HighQuality" />
+                        CornerRadius="9"
+                        Padding="10,9"
+                        Margin="0,0,0,14">
+                    <StackPanel>
+                        <Border x:Name="VrStatusBadge"
+                                Background="#162936"
+                                BorderBrush="#0284C7"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="8,4"
+                                Margin="0,0,0,6">
+                            <TextBlock x:Name="VrStatusText"
+                                       Text="○ 等待 SteamVR…"
+                                       FontSize="11.5"
+                                       FontWeight="SemiBold"
+                                       Foreground="#7DD3FC"
+                                       TextTrimming="CharacterEllipsis" />
+                        </Border>
+
+                        <TextBlock x:Name="PlayerStatusText"
+                                   Text="播放器：未检测"
+                                   FontSize="11.5"
+                                   Foreground="#CBD5E1"
+                                   Margin="2,0,0,3"
+                                   TextTrimming="CharacterEllipsis" />
+
+                        <TextBlock x:Name="TrackAndLyricsStatusText"
+                                   Text="正在等待播放曲目…"
+                                   FontSize="11"
+                                   Foreground="#94A3B8"
+                                   Margin="2,0,0,0"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
+                <!-- 3. Navigation Menu Items -->
+                <StackPanel Grid.Row="2">
+                    <TextBlock Text="设置分类" FontSize="11" FontWeight="SemiBold" Foreground="#64748B" Margin="10,0,0,6" />
+                    <RadioButton x:Name="NavPlacement"
+                                 Style="{StaticResource NavItemRadioStyle}"
+                                 GroupName="MainNav"
+                                 Content="📍  显示与空间锚定"
+                                 IsChecked="True"
+                                 Checked="OnNavPageRadioChecked" />
+                    <RadioButton x:Name="NavTypography"
+                                 Style="{StaticResource NavItemRadioStyle}"
+                                 GroupName="MainNav"
+                                 Content="🔤  字体与排版布局"
+                                 Checked="OnNavPageRadioChecked" />
+                    <RadioButton x:Name="NavColors"
+                                 Style="{StaticResource NavItemRadioStyle}"
+                                 GroupName="MainNav"
+                                 Content="🎨  色彩主题与动效"
+                                 Checked="OnNavPageRadioChecked" />
+                    <RadioButton x:Name="NavSystem"
+                                 Style="{StaticResource NavItemRadioStyle}"
+                                 GroupName="MainNav"
+                                 Content="⏱️  时间轴与系统集成"
+                                 Checked="OnNavPageRadioChecked" />
+                </StackPanel>
+
+                <!-- 4. Sidebar Footer Quick Toggles & Window Actions -->
+                <Border Grid.Row="3"
+                        Background="#131C2E"
+                        BorderBrush="#22304A"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="12,10">
+                    <StackPanel>
+                        <DockPanel Margin="0,0,0,8">
+                            <TextBlock Text="显示 VR 歌词" FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <CheckBox x:Name="ChkOverlayEnabled"
+                                      HorizontalAlignment="Right"
+                                      Checked="OnOverlayEnabledChanged"
+                                      Unchecked="OnOverlayEnabledChanged" />
+                        </DockPanel>
+
+                        <DockPanel Margin="0,0,0,10">
+                            <TextBlock Text="🎬 样式演示动画"
+                                       FontSize="12.5"
+                                       VerticalAlignment="Center"
+                                       ToolTip="开启后在预览区和VR中循环播放逐字卡拉OK演示歌词" />
+                            <CheckBox x:Name="ChkDemoLoop"
+                                      HorizontalAlignment="Right"
+                                      Checked="OnDemoLoopChanged"
+                                      Unchecked="OnDemoLoopChanged" />
+                        </DockPanel>
+
+                        <Button Content="🔄 重新获取当前歌词"
+                                Style="{StaticResource ActionButtonStyle}"
+                                Margin="0,0,0,6"
+                                Click="OnReloadLyricsClick" />
+
+                        <UniformGrid Columns="2">
+                            <Button Content="最小化托盘"
+                                    Style="{StaticResource ActionButtonStyle}"
+                                    Margin="0,0,4,0"
+                                    Padding="8,6"
+                                    Click="OnMinimizeToTrayClick" />
+                            <Button Content="彻底退出"
+                                    Style="{StaticResource DangerButtonStyle}"
+                                    Margin="4,0,0,0"
+                                    Padding="8,6"
+                                    Click="OnExitAppClick" />
+                        </UniformGrid>
+                    </StackPanel>
                 </Border>
             </Grid>
         </Border>
 
-        <!-- ==================== 3. SETTINGS TABS ==================== -->
-        <TabControl Grid.Row="2"
-                    Background="{StaticResource CardBgBrush}"
-                    BorderBrush="{StaticResource CardBorderBrush}"
-                    BorderThickness="1"
-                    Padding="14">
+        <!-- ==================== RIGHT MAIN CONTENT AREA ==================== -->
+        <Grid Grid.Column="1" Margin="20,16,20,16">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
 
-            <!-- TAB 1: 显示与位置 -->
-            <TabItem Header="📍 显示与位置">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="4,4,10,4">
-                    <StackPanel>
-                        <DockPanel Margin="0,2,0,8">
-                            <TextBlock Text="挂载位置模式" FontSize="14" FontWeight="Bold" Foreground="#38BDF8" VerticalAlignment="Center" />
-                            <Button Content="恢复当前模式默认位置"
+            <!-- 1. Pinned Live 1:1 VR Overlay Preview Card (Collapsible) -->
+            <Border Grid.Row="0"
+                    Background="#0E1525"
+                    BorderBrush="#22304A"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="14,10"
+                    Margin="0,0,0,14">
+                <StackPanel>
+                    <DockPanel>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="🥽 实时叠加层渲染预览（与 VR 头显内 1:1 同步）"
+                                       FontSize="13"
+                                       FontWeight="SemiBold"
+                                       Foreground="#38BDF8"
+                                       VerticalAlignment="Center" />
+                            <TextBlock x:Name="PreviewMetaText"
+                                       Text="1600×420 · 60 FPS · 修改设置即时生效"
+                                       FontSize="11.5"
+                                       Foreground="#64748B"
+                                       VerticalAlignment="Center"
+                                       Margin="12,0,0,0" />
+                        </StackPanel>
+
+                        <Button x:Name="BtnTogglePreviewCollapse"
+                                Content="收起预览 ▲"
+                                Style="{StaticResource ActionButtonStyle}"
+                                HorizontalAlignment="Right"
+                                Padding="10,3"
+                                FontSize="11.5"
+                                Click="OnTogglePreviewCollapseClick" />
+                    </DockPanel>
+
+                    <Border x:Name="PreviewCanvasContainer"
+                            Height="164"
+                            Margin="0,8,0,0"
+                            CornerRadius="8"
+                            BorderBrush="#1E293B"
+                            BorderThickness="1"
+                            ClipToBounds="True">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#111A2E" Offset="0" />
+                                <GradientStop Color="#080C16" Offset="0.55" />
+                                <GradientStop Color="#142238" Offset="1" />
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <Image x:Name="PreviewImage"
+                               Stretch="Uniform"
+                               RenderOptions.BitmapScalingMode="HighQuality" />
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <!-- 2. Scrollable Fluent Settings Pages -->
+            <ScrollViewer x:Name="MainPageScrollViewer"
+                          Grid.Row="1"
+                          VerticalScrollBarVisibility="Auto"
+                          Padding="0,0,6,0">
+                <Grid>
+                    <!-- ==================== PAGE 1: 显示与空间锚定 ==================== -->
+                    <StackPanel x:Name="PagePlacement" Visibility="Visible">
+                        <DockPanel Margin="2,0,2,10">
+                            <StackPanel>
+                                <TextBlock Text="显示与空间锚定" FontSize="20" FontWeight="Bold" Foreground="#F8FAFC" />
+                                <TextBlock Text="选择歌词在 VR 中的锚定方式，并调节物理尺寸、环绕曲面与空间坐标" FontSize="12.5" Foreground="{StaticResource MutedTextBrush}" Margin="0,2,0,0" />
+                            </StackPanel>
+                            <Button Content="↺ 恢复当前位置默认参数"
                                     Style="{StaticResource ActionButtonStyle}"
                                     HorizontalAlignment="Right"
-                                    Padding="10,4"
+                                    VerticalAlignment="Center"
                                     Click="OnResetPlacementClick" />
                         </DockPanel>
 
-                        <UniformGrid Columns="4" Margin="0,0,0,14">
-                            <RadioButton x:Name="RbModeHead" GroupName="AttachMode" Content="👀 头部跟随 (视野下方)" Foreground="#F1F5F9" FontSize="13" Margin="0,4" Checked="OnAttachmentModeRadioChecked" />
-                            <RadioButton x:Name="RbModeWorld" GroupName="AttachMode" Content="🌍 空间固定 (可手柄拖拽)" Foreground="#F1F5F9" FontSize="13" Margin="0,4" Checked="OnAttachmentModeRadioChecked" />
-                            <RadioButton x:Name="RbModeLeftHand" GroupName="AttachMode" Content="⌚ 左手腕跟随" Foreground="#F1F5F9" FontSize="13" Margin="0,4" Checked="OnAttachmentModeRadioChecked" />
-                            <RadioButton x:Name="RbModeRightHand" GroupName="AttachMode" Content="⌚ 右手腕跟随" Foreground="#F1F5F9" FontSize="13" Margin="0,4" Checked="OnAttachmentModeRadioChecked" />
-                        </UniformGrid>
+                        <!-- Mode Segmented Selector Card -->
+                        <Border Style="{StaticResource SettingsCardBorderStyle}">
+                            <StackPanel>
+                                <TextBlock Text="空间挂载模式" FontSize="13.5" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <Border Background="{StaticResource SubCardBgBrush}"
+                                        BorderBrush="#1E293B"
+                                        BorderThickness="1"
+                                        CornerRadius="9"
+                                        Padding="3">
+                                    <UniformGrid Columns="4">
+                                        <RadioButton x:Name="RbModeHead" Style="{StaticResource SegmentedItemRadioStyle}" GroupName="AttachMode" Content="👀 头部跟随 (视野下方)" Checked="OnAttachmentModeRadioChecked" />
+                                        <RadioButton x:Name="RbModeWorld" Style="{StaticResource SegmentedItemRadioStyle}" GroupName="AttachMode" Content="🌍 空间固定 (可手柄拖拽)" Checked="OnAttachmentModeRadioChecked" />
+                                        <RadioButton x:Name="RbModeLeftHand" Style="{StaticResource SegmentedItemRadioStyle}" GroupName="AttachMode" Content="⌚ 左手腕跟随" Checked="OnAttachmentModeRadioChecked" />
+                                        <RadioButton x:Name="RbModeRightHand" Style="{StaticResource SegmentedItemRadioStyle}" GroupName="AttachMode" Content="⌚ 右手腕跟随" Checked="OnAttachmentModeRadioChecked" />
+                                    </UniformGrid>
+                                </Border>
+                            </StackPanel>
+                        </Border>
 
-                        <TextBlock Text="基础尺寸、曲面与透明度" FontSize="14" FontWeight="Bold" Foreground="#38BDF8" Margin="0,2,0,8" />
-                        <Grid Margin="0,0,0,14">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="175" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="90" />
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="32" />
-                                <RowDefinition Height="32" />
-                                <RowDefinition Height="32" />
-                            </Grid.RowDefinitions>
+                        <!-- Physical Dimensions Card -->
+                        <Border Style="{StaticResource SettingsCardBorderStyle}">
+                            <StackPanel>
+                                <TextBlock Text="物理尺寸、不透明度与曲面弧度" FontSize="13.5" FontWeight="SemiBold" Foreground="#38BDF8" Margin="0,0,0,10" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="190" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="90" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="34" />
+                                        <RowDefinition Height="34" />
+                                        <RowDefinition Height="34" />
+                                    </Grid.RowDefinitions>
 
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="叠加层物理宽度 (米)" VerticalAlignment="Center" />
-                            <Slider x:Name="SldWidthMeters" Grid.Row="0" Grid.Column="1" Minimum="0.25" Maximum="2.40" SmallChange="0.05" LargeChange="0.1" ValueChanged="OnPlacementSliderChanged" />
-                            <TextBlock x:Name="LblWidthMeters" Grid.Row="0" Grid.Column="2" Text="0.95 m" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="画面物理宽度 (米)" VerticalAlignment="Center" />
+                                    <Slider x:Name="SldWidthMeters" Grid.Row="0" Grid.Column="1" Minimum="0.25" Maximum="2.40" SmallChange="0.05" LargeChange="0.2" ValueChanged="OnPlacementSliderChanged" />
+                                    <TextBlock x:Name="LblWidthMeters" Grid.Row="0" Grid.Column="2" Text="0.95 m" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
 
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="叠加层整体不透明度" VerticalAlignment="Center" />
-                            <Slider x:Name="SldOpacity" Grid.Row="1" Grid.Column="1" Minimum="0.15" Maximum="1.00" SmallChange="0.02" LargeChange="0.1" ValueChanged="OnPlacementSliderChanged" />
-                            <TextBlock x:Name="LblOpacity" Grid.Row="1" Grid.Column="2" Text="96%" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="画面整体不透明度" VerticalAlignment="Center" />
+                                    <Slider x:Name="SldOpacity" Grid.Row="1" Grid.Column="1" Minimum="0.15" Maximum="1.00" SmallChange="0.05" LargeChange="0.1" ValueChanged="OnPlacementSliderChanged" />
+                                    <TextBlock x:Name="LblOpacity" Grid.Row="1" Grid.Column="2" Text="96%" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
 
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="面板环绕曲面弧度" VerticalAlignment="Center" />
-                            <Slider x:Name="SldCurvature" Grid.Row="2" Grid.Column="1" Minimum="0.00" Maximum="0.35" SmallChange="0.01" LargeChange="0.05" ValueChanged="OnPlacementSliderChanged" />
-                            <TextBlock x:Name="LblCurvature" Grid.Row="2" Grid.Column="2" Text="8%" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
-                        </Grid>
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="画面曲面环绕度 (Curvature)" VerticalAlignment="Center" />
+                                    <Slider x:Name="SldCurvature" Grid.Row="2" Grid.Column="1" Minimum="0.00" Maximum="0.40" SmallChange="0.02" LargeChange="0.05" ValueChanged="OnPlacementSliderChanged" />
+                                    <TextBlock x:Name="LblCurvature" Grid.Row="2" Grid.Column="2" Text="8%" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
 
-                        <!-- (A) 头部跟随专属参数面板 -->
-                        <Border x:Name="PanelHeadMode"
-                                Background="#0E1525"
-                                BorderBrush="#24324D"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="14,12">
+                        <!-- Mode Panel A: HeadLocked -->
+                        <Border x:Name="PanelHeadMode" Style="{StaticResource SettingsCardBorderStyle}">
                             <StackPanel>
                                 <DockPanel Margin="0,0,0,10">
-                                    <TextBlock Text="👀 头部跟随 (Head-Locked) 视野位置微调" FontSize="13.5" FontWeight="Bold" Foreground="#38BDF8" VerticalAlignment="Center" />
+                                    <TextBlock Text="👀 头部跟随偏移与倾角" FontSize="13.5" FontWeight="SemiBold" Foreground="#38BDF8" VerticalAlignment="Center" />
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                        <Button Content="正下方 (默认)" Tag="Bottom" Style="{StaticResource ActionButtonStyle}" Padding="10,3" Margin="0,0,6,0" Click="OnHeadPresetClick" />
-                                        <Button Content="正上方" Tag="Top" Style="{StaticResource ActionButtonStyle}" Padding="10,3" Margin="0,0,6,0" Click="OnHeadPresetClick" />
-                                        <Button Content="左下方" Tag="BottomLeft" Style="{StaticResource ActionButtonStyle}" Padding="10,3" Margin="0,0,6,0" Click="OnHeadPresetClick" />
-                                        <Button Content="右下方" Tag="BottomRight" Style="{StaticResource ActionButtonStyle}" Padding="10,3" Click="OnHeadPresetClick" />
+                                        <Button Content="视野正下方(默认)" Style="{StaticResource ActionButtonStyle}" Padding="10,4" Margin="0,0,6,0" Tag="BottomCenter" Click="OnHeadPresetClick" />
+                                        <Button Content="视野正上方" Style="{StaticResource ActionButtonStyle}" Padding="10,4" Margin="0,0,6,0" Tag="Top" Click="OnHeadPresetClick" />
+                                        <Button Content="视野左下角" Style="{StaticResource ActionButtonStyle}" Padding="10,4" Margin="0,0,6,0" Tag="BottomLeft" Click="OnHeadPresetClick" />
+                                        <Button Content="视野右下角" Style="{StaticResource ActionButtonStyle}" Padding="10,4" Tag="BottomRight" Click="OnHeadPresetClick" />
                                     </StackPanel>
                                 </DockPanel>
 
                                 <Grid>
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="175" />
+                                        <ColumnDefinition Width="190" />
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="90" />
                                     </Grid.ColumnDefinitions>
                                     <Grid.RowDefinitions>
-                                        <RowDefinition Height="30" />
-                                        <RowDefinition Height="30" />
-                                        <RowDefinition Height="30" />
-                                        <RowDefinition Height="30" />
-                                        <RowDefinition Height="30" />
+                                        <RowDefinition Height="32" />
+                                        <RowDefinition Height="32" />
+                                        <RowDefinition Height="32" />
+                                        <RowDefinition Height="32" />
+                                        <RowDefinition Height="32" />
                                     </Grid.RowDefinitions>
 
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="水平左右偏移 (X)" VerticalAlignment="Center" />
-                                    <Slider x:Name="SldHeadX" Grid.Row="0" Grid.Column="1" Minimum="-0.80" Maximum="0.80" ValueChanged="OnPlacementSliderChanged" />
-                                    <TextBlock x:Name="LblHeadX" Grid.Row="0" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#CBD5E1" />
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="水平偏移 X (左/右)" VerticalAlignment="Center" />
+                                    <Slider x:Name="SldHeadX" Grid.Row="0" Grid.Column="1" Minimum="-0.80" Maximum="0.80" SmallChange="0.02" LargeChange="0.1" ValueChanged="OnPlacementSliderChanged" />
+                                    <TextBlock x:Name="LblHeadX" Grid.Row="0" Grid.Column="2" Text="+0.00 m" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
 
-                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="垂直上下偏移 (Y)" VerticalAlignment="Center" />
-                                    <Slider x:Name="SldHeadY" Grid.Row="1" Grid.Column="1" Minimum="-0.80" Maximum="0.80" ValueChanged="OnPlacementSliderChanged" />
-                                    <TextBlock x:Name="LblHeadY" Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#CBD5E1" />
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="垂直偏移 Y (下/上)" VerticalAlignment="Center" />
+                                    <Slider x:Name="SldHeadY" Grid.Row="1" Grid.Column="1" Minimum="-0.75" Maximum="0.75" SmallChange="0.02" LargeChange="0.1" ValueChanged="OnPlacementSliderChanged" />
+                                    <TextBlock x:Name="LblHeadY" Grid.Row="1" Grid.Column="2" Text="-0.24 m" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
 
-                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="视野前后距离 (Z)" VerticalAlignment="Center" />
-                                    <Slider x:Name="SldHeadZ" Grid.Row="2" Grid.Column="1" Minimum="-2.50" Maximum="-0.45" ValueChanged="OnPlacementSliderChanged" />
-                                    <TextBlock x:Name="LblHeadZ" Grid.Row="2" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#CBD5E1" />
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="前后距离 Z (越负越远)" VerticalAlignment="Center" />
+                                    <Slider x:Name="SldHeadZ" Grid.Row="2" Grid.Column="1" Minimum="-2.80" Maximum="-0.45" SmallChange="0.05" LargeChange="0.2" ValueChanged="OnPlacementSliderChanged" />
+                                    <TextBlock x:Name="LblHeadZ" Grid.Row="2" Grid.Column="2" Text="-1.15 m" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
 
-                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="俯仰倾角 (Pitch °)" VerticalAlignment="Center" />
-                                    <Slider x:Name="SldHeadPitch" Grid.Row="3" Grid.Column="1" Minimum="-45" Maximum="45" ValueChanged="OnPlacementSliderChanged" />
-                                    <TextBlock x:Name="LblHeadPitch" Grid.Row="3" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#CBD5E1" />
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="俯仰倾角 Pitch (°)" VerticalAlignment="Center" />
+                                    <Slider x:Name="SldHeadPitch" Grid.Row="3" Grid.Column="1" Minimum="-45" Maximum="45" SmallChange="1" LargeChange="5" ValueChanged="OnPlacementSliderChanged" />
+                                    <TextBlock x:Name="LblHeadPitch" Grid.Row="3" Grid.Column="2" Text="+12.0°" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
 
-                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="水平偏航角 (Yaw °)" VerticalAlignment="Center" />
-                                    <Slider x:Name="SldHeadYaw" Grid.Row="4" Grid.Column="1" Minimum="-45" Maximum="45" ValueChanged="OnPlacementSliderChanged" />
-                                    <TextBlock x:Name="LblHeadYaw" Grid.Row="4" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#CBD5E1" />
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="水平偏航角 Yaw (°)" VerticalAlignment="Center" />
+                                    <Slider x:Name="SldHeadYaw" Grid.Row="4" Grid.Column="1" Minimum="-45" Maximum="45" SmallChange="1" LargeChange="5" ValueChanged="OnPlacementSliderChanged" />
+                                    <TextBlock x:Name="LblHeadYaw" Grid.Row="4" Grid.Column="2" Text="0.0°" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
                                 </Grid>
                             </StackPanel>
                         </Border>
 
-                        <!-- (B) 空间固定与手柄拖拽专属参数面板 -->
-                        <Border x:Name="PanelWorldMode"
-                                Background="#0E1525"
-                                BorderBrush="#24324D"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="14,12"
-                                Visibility="Collapsed">
+                        <!-- Mode Panel B: WorldLocked -->
+                        <Border x:Name="PanelWorldMode" Style="{StaticResource SettingsCardBorderStyle}" Visibility="Collapsed">
                             <StackPanel>
-                                <DockPanel Margin="0,0,0,8">
-                                    <TextBlock Text="🌍 空间固定 (World-Locked) 坐标与 VR 手柄抓取" FontSize="13.5" FontWeight="Bold" Foreground="#38BDF8" VerticalAlignment="Center" />
-                                    <Button Content="📍 将空间歌词移至当前头显视野正前方"
+                                <DockPanel Margin="0,0,0,10">
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="🌍 空间固定坐标与 VR 手柄交互" FontSize="13.5" FontWeight="SemiBold" Foreground="#38BDF8" />
+                                        <TextBlock Text="在 VR 中用手柄指向歌词按住 Grip(侧键)/Trigger(扳机) 即可自由拖动位置，推摇杆调节远近" FontSize="11.5" Foreground="{StaticResource MutedTextBrush}" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                    <Button Content="📍 移至当前头显视野正前方"
                                             Style="{StaticResource PrimaryButtonStyle}"
                                             HorizontalAlignment="Right"
-                                            Padding="12,4"
+                                            VerticalAlignment="Center"
                                             Click="OnRecenterWorldToHmdClick" />
                                 </DockPanel>
 
-                                <WrapPanel Margin="0,0,0,8">
+                                <WrapPanel Margin="0,0,0,10">
                                     <CheckBox x:Name="ChkWorldControllerGrab"
-                                              Content="✋ 允许在 VR 中用手柄抓取拖动歌词面板"
-                                              Margin="0,0,22,0"
+                                              Content="✋ 允许使用 VR 手柄抓取拖动歌词"
+                                              Margin="0,0,28,4"
                                               Checked="OnWorldGrabCheckChanged"
                                               Unchecked="OnWorldGrabCheckChanged" />
                                     <CheckBox x:Name="ChkWorldAutoFaceHmd"
-                                              Content="🎯 拖动释放时自动朝向头显视线（保持水平）"
+                                              Content="🧭 拖动时自动使歌词正面朝向头显"
+                                              Margin="0,0,0,4"
                                               Checked="OnWorldGrabCheckChanged"
                                               Unchecked="OnWorldGrabCheckChanged" />
                                 </WrapPanel>
 
-                                <Border Background="#122136" BorderBrush="#1E3A5F" BorderThickness="1" CornerRadius="6" Padding="10,6" Margin="0,0,0,10">
-                                    <TextBlock Text="💡 VR 手柄拖拽方法：将手柄射线指向（或直接伸手靠近）歌词面板，出现蓝色高亮边框后按住【侧握键 Grip】或【扳机键 Trigger】即可自由拖动位置，推手柄摇杆可调节远近，松开后自动保存坐标。游戏中若防止误触可关闭上方开关。"
-                                               FontSize="12"
-                                               Foreground="#BAE6FD"
-                                               TextWrapping="Wrap" />
-                                </Border>
-
                                 <Grid>
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="175" />
+                                        <ColumnDefinition Width="190" />
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="90" />
                                     </Grid.ColumnDefinitions>
                                     <Grid.RowDefinitions>
-                                        <RowDefinition Height="30" />
-                                        <RowDefinition Height="30" />
-                                        <RowDefinition Height="30" />
-                                        <RowDefinition Height="30" />
-                                        <RowDefinition Height="30" />
+                                        <RowDefinition Height="32" />
+                                        <RowDefinition Height="32" />
+                                        <RowDefinition Height="32" />
+                                        <RowDefinition Height="32" />
+                                        <RowDefinition Height="32" />
                                     </Grid.RowDefinitions>
 
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="空间左右位置 (World X)" VerticalAlignment="Center" />
-                                    <Slider x:Name="SldWorldX" Grid.Row="0" Grid.Column="1" Minimum="-3.00" Maximum="3.00" ValueChanged="OnPlacementSliderChanged" />
-                                    <TextBlock x:Name="LblWorldX" Grid.Row="0" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#CBD5E1" />
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="世界坐标 X (左右)" VerticalAlignment="Center" />
+                                    <Slider x:Name="SldWorldX" Grid.Row="0" Grid.Column="1" Minimum="-3.00" Maximum="3.00" SmallChange="0.05" LargeChange="0.2" ValueChanged="OnPlacementSliderChanged" />
+                                    <TextBlock x:Name="LblWorldX" Grid.Row="0" Grid.Column="2" Text="+0.00 m" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
 
-                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="空间高度位置 (World Y)" VerticalAlignment="Center" />
-                                    <Slider x:Name="SldWorldY" Grid.Row="1" Grid.Column="1" Minimum="0.20" Maximum="2.80" ValueChanged="OnPlacementSliderChanged" />
-                                    <TextBlock x:Name="LblWorldY" Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#CBD5E1" />
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="世界坐标 Y (高度)" VerticalAlignment="Center" />
+                                    <Slider x:Name="SldWorldY" Grid.Row="1" Grid.Column="1" Minimum="0.20" Maximum="2.80" SmallChange="0.05" LargeChange="0.2" ValueChanged="OnPlacementSliderChanged" />
+                                    <TextBlock x:Name="LblWorldY" Grid.Row="1" Grid.Column="2" Text="1.30 m" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
 
-                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="空间前后位置 (World Z)" VerticalAlignment="Center" />
-                                    <Slider x:Name="SldWorldZ" Grid.Row="2" Grid.Column="1" Minimum="-3.50" Maximum="3.50" ValueChanged="OnPlacementSliderChanged" />
-                                    <TextBlock x:Name="LblWorldZ" Grid.Row="2" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#CBD5E1" />
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="世界坐标 Z (前后)" VerticalAlignment="Center" />
+                                    <Slider x:Name="SldWorldZ" Grid.Row="2" Grid.Column="1" Minimum="-3.50" Maximum="3.50" SmallChange="0.05" LargeChange="0.2" ValueChanged="OnPlacementSliderChanged" />
+                                    <TextBlock x:Name="LblWorldZ" Grid.Row="2" Grid.Column="2" Text="-1.40 m" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
 
-                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="水平朝向偏航角 (Yaw °)" VerticalAlignment="Center" />
-                                    <Slider x:Name="SldWorldYaw" Grid.Row="3" Grid.Column="1" Minimum="-180" Maximum="180" ValueChanged="OnPlacementSliderChanged" />
-                                    <TextBlock x:Name="LblWorldYaw" Grid.Row="3" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#CBD5E1" />
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="水平朝向角 Yaw (°)" VerticalAlignment="Center" />
+                                    <Slider x:Name="SldWorldYaw" Grid.Row="3" Grid.Column="1" Minimum="-180" Maximum="180" SmallChange="2" LargeChange="15" ValueChanged="OnPlacementSliderChanged" />
+                                    <TextBlock x:Name="LblWorldYaw" Grid.Row="3" Grid.Column="2" Text="0.0°" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
 
-                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="空间俯仰倾角 (Pitch °)" VerticalAlignment="Center" />
-                                    <Slider x:Name="SldWorldPitch" Grid.Row="4" Grid.Column="1" Minimum="-75" Maximum="75" ValueChanged="OnPlacementSliderChanged" />
-                                    <TextBlock x:Name="LblWorldPitch" Grid.Row="4" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#CBD5E1" />
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="俯仰倾角 Pitch (°)" VerticalAlignment="Center" />
+                                    <Slider x:Name="SldWorldPitch" Grid.Row="4" Grid.Column="1" Minimum="-60" Maximum="60" SmallChange="1" LargeChange="10" ValueChanged="OnPlacementSliderChanged" />
+                                    <TextBlock x:Name="LblWorldPitch" Grid.Row="4" Grid.Column="2" Text="0.0°" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
                                 </Grid>
                             </StackPanel>
                         </Border>
 
-                        <!-- (C) 左右手腕跟随专属参数面板 -->
-                        <Border x:Name="PanelHandMode"
-                                Background="#0E1525"
-                                BorderBrush="#24324D"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="14,12"
-                                Visibility="Collapsed">
+                        <!-- Mode Panel C: LeftHand / RightHand -->
+                        <Border x:Name="PanelHandMode" Style="{StaticResource SettingsCardBorderStyle}" Visibility="Collapsed">
                             <StackPanel>
                                 <DockPanel Margin="0,0,0,10">
-                                    <TextBlock x:Name="LblHandModeTitle" Text="⌚ 手腕 / 手柄跟随位置与角度" FontSize="13.5" FontWeight="Bold" Foreground="#38BDF8" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="LblHandModeTitle" Text="⌚ 手腕 / 手柄跟随位置与角度" FontSize="13.5" FontWeight="SemiBold" Foreground="#38BDF8" VerticalAlignment="Center" />
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                        <Button Content="🎮 手柄正上方 (默认)" Tag="ControllerTop" Style="{StaticResource ActionButtonStyle}" Padding="10,3" Margin="0,0,6,0" Click="OnHandPresetClick" />
-                                        <Button Content="⌚ 手腕内侧 (看表姿势)" Tag="InnerWrist" Style="{StaticResource ActionButtonStyle}" Padding="10,3" Margin="0,0,6,0" Click="OnHandPresetClick" />
-                                        <Button Content="🤚 手背外侧" Tag="OuterWrist" Style="{StaticResource ActionButtonStyle}" Padding="10,3" Click="OnHandPresetClick" />
+                                        <Button Content="手柄正上方(默认)" Style="{StaticResource ActionButtonStyle}" Padding="10,4" Margin="0,0,6,0" Tag="AboveController" Click="OnHandPresetClick" />
+                                        <Button Content="⌚ 手腕内侧(看表姿势)" Style="{StaticResource ActionButtonStyle}" Padding="10,4" Margin="0,0,6,0" Tag="InnerWrist" Click="OnHandPresetClick" />
+                                        <Button Content="🤚 手背外侧" Style="{StaticResource ActionButtonStyle}" Padding="10,4" Tag="OuterWrist" Click="OnHandPresetClick" />
                                     </StackPanel>
                                 </DockPanel>
 
                                 <Grid>
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="175" />
+                                        <ColumnDefinition Width="190" />
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="90" />
                                     </Grid.ColumnDefinitions>
                                     <Grid.RowDefinitions>
-                                        <RowDefinition Height="29" />
-                                        <RowDefinition Height="29" />
-                                        <RowDefinition Height="29" />
-                                        <RowDefinition Height="29" />
-                                        <RowDefinition Height="29" />
-                                        <RowDefinition Height="29" />
+                                        <RowDefinition Height="32" />
+                                        <RowDefinition Height="32" />
+                                        <RowDefinition Height="32" />
+                                        <RowDefinition Height="32" />
+                                        <RowDefinition Height="32" />
+                                        <RowDefinition Height="32" />
                                     </Grid.RowDefinitions>
 
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="手柄左右偏移 (Hand X)" VerticalAlignment="Center" />
-                                    <Slider x:Name="SldHandX" Grid.Row="0" Grid.Column="1" Minimum="-0.35" Maximum="0.35" ValueChanged="OnPlacementSliderChanged" />
-                                    <TextBlock x:Name="LblHandX" Grid.Row="0" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#CBD5E1" />
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="手部偏移 X (左右)" VerticalAlignment="Center" />
+                                    <Slider x:Name="SldHandX" Grid.Row="0" Grid.Column="1" Minimum="-0.35" Maximum="0.35" SmallChange="0.01" LargeChange="0.05" ValueChanged="OnPlacementSliderChanged" />
+                                    <TextBlock x:Name="LblHandX" Grid.Row="0" Grid.Column="2" Text="+0.00 m" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
 
-                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="手柄上下偏移 (Hand Y)" VerticalAlignment="Center" />
-                                    <Slider x:Name="SldHandY" Grid.Row="1" Grid.Column="1" Minimum="-0.35" Maximum="0.35" ValueChanged="OnPlacementSliderChanged" />
-                                    <TextBlock x:Name="LblHandY" Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#CBD5E1" />
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="手部偏移 Y (上下)" VerticalAlignment="Center" />
+                                    <Slider x:Name="SldHandY" Grid.Row="1" Grid.Column="1" Minimum="-0.35" Maximum="0.35" SmallChange="0.01" LargeChange="0.05" ValueChanged="OnPlacementSliderChanged" />
+                                    <TextBlock x:Name="LblHandY" Grid.Row="1" Grid.Column="2" Text="+0.10 m" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
 
-                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="手柄前后偏移 (Hand Z)" VerticalAlignment="Center" />
-                                    <Slider x:Name="SldHandZ" Grid.Row="2" Grid.Column="1" Minimum="-0.35" Maximum="0.35" ValueChanged="OnPlacementSliderChanged" />
-                                    <TextBlock x:Name="LblHandZ" Grid.Row="2" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#CBD5E1" />
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="手部偏移 Z (前后)" VerticalAlignment="Center" />
+                                    <Slider x:Name="SldHandZ" Grid.Row="2" Grid.Column="1" Minimum="-0.35" Maximum="0.35" SmallChange="0.01" LargeChange="0.05" ValueChanged="OnPlacementSliderChanged" />
+                                    <TextBlock x:Name="LblHandZ" Grid.Row="2" Grid.Column="2" Text="-0.05 m" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
 
-                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="俯仰角度 (Pitch °)" VerticalAlignment="Center" />
-                                    <Slider x:Name="SldHandPitch" Grid.Row="3" Grid.Column="1" Minimum="-180" Maximum="180" ValueChanged="OnPlacementSliderChanged" />
-                                    <TextBlock x:Name="LblHandPitch" Grid.Row="3" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#CBD5E1" />
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="手腕俯仰角 Pitch (°)" VerticalAlignment="Center" />
+                                    <Slider x:Name="SldHandPitch" Grid.Row="3" Grid.Column="1" Minimum="-90" Maximum="90" SmallChange="2" LargeChange="15" ValueChanged="OnPlacementSliderChanged" />
+                                    <TextBlock x:Name="LblHandPitch" Grid.Row="3" Grid.Column="2" Text="-45.0°" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
 
-                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="水平偏航角 (Yaw °)" VerticalAlignment="Center" />
-                                    <Slider x:Name="SldHandYaw" Grid.Row="4" Grid.Column="1" Minimum="-180" Maximum="180" ValueChanged="OnPlacementSliderChanged" />
-                                    <TextBlock x:Name="LblHandYaw" Grid.Row="4" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#CBD5E1" />
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="手腕偏航角 Yaw (°)" VerticalAlignment="Center" />
+                                    <Slider x:Name="SldHandYaw" Grid.Row="4" Grid.Column="1" Minimum="-180" Maximum="180" SmallChange="5" LargeChange="15" ValueChanged="OnPlacementSliderChanged" />
+                                    <TextBlock x:Name="LblHandYaw" Grid.Row="4" Grid.Column="2" Text="0.0°" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
 
-                                    <TextBlock Grid.Row="5" Grid.Column="0" Text="手腕翻滚角 (Roll °)" VerticalAlignment="Center" />
-                                    <Slider x:Name="SldHandRoll" Grid.Row="5" Grid.Column="1" Minimum="-180" Maximum="180" ValueChanged="OnPlacementSliderChanged" />
-                                    <TextBlock x:Name="LblHandRoll" Grid.Row="5" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#CBD5E1" />
+                                    <TextBlock Grid.Row="5" Grid.Column="0" Text="手腕翻滚角 Roll (°)" VerticalAlignment="Center" />
+                                    <Slider x:Name="SldHandRoll" Grid.Row="5" Grid.Column="1" Minimum="-180" Maximum="180" SmallChange="5" LargeChange="15" ValueChanged="OnPlacementSliderChanged" />
+                                    <TextBlock x:Name="LblHandRoll" Grid.Row="5" Grid.Column="2" Text="0.0°" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
                                 </Grid>
                             </StackPanel>
                         </Border>
                     </StackPanel>
-                </ScrollViewer>
-            </TabItem>
 
-            <!-- TAB 2: 字体与排版 -->
-            <TabItem Header="🔤 字体与排版">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="4,4,10,4">
-                    <StackPanel>
-                        <TextBlock Text="字体与字重" FontSize="14" FontWeight="Bold" Foreground="#38BDF8" Margin="0,2,0,10" />
-                        <WrapPanel Margin="0,0,0,16" VerticalAlignment="Center">
-                            <TextBlock Text="歌词字体：" VerticalAlignment="Center" Margin="0,0,8,0" />
-                            <ComboBox x:Name="CmbFontFamily"
-                                      Width="280"
-                                      IsEditable="True"
-                                      Margin="0,0,20,0"
-                                      SelectionChanged="OnFontFamilySelectionChanged"
-                                      LostFocus="OnFontFamilyLostFocus" />
-                            <CheckBox x:Name="ChkBold"
-                                      Content="粗体字重 (Bold，VR 远距离更清晰)"
-                                      Checked="OnTypographyCheckChanged"
-                                      Unchecked="OnTypographyCheckChanged" />
-                        </WrapPanel>
-
-                        <TextBlock Text="各级歌词字号" FontSize="14" FontWeight="Bold" Foreground="#38BDF8" Margin="0,4,0,8" />
-                        <Grid Margin="0,0,0,18">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="180" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="85" />
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="36" />
-                                <RowDefinition Height="36" />
-                                <RowDefinition Height="36" />
-                            </Grid.RowDefinitions>
-
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="当前主歌词字号 (px)" VerticalAlignment="Center" />
-                            <Slider x:Name="SldMainFontSize" Grid.Row="0" Grid.Column="1" Minimum="28" Maximum="84" SmallChange="1" LargeChange="4" ValueChanged="OnTypographySliderChanged" />
-                            <TextBlock x:Name="LblMainFontSize" Grid.Row="0" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
-
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="双语翻译行字号 (px)" VerticalAlignment="Center" />
-                            <Slider x:Name="SldTransFontSize" Grid.Row="1" Grid.Column="1" Minimum="16" Maximum="54" SmallChange="1" LargeChange="4" ValueChanged="OnTypographySliderChanged" />
-                            <TextBlock x:Name="LblTransFontSize" Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
-
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="上下句上下文行字号 (px)" VerticalAlignment="Center" />
-                            <Slider x:Name="SldContextFontSize" Grid.Row="2" Grid.Column="1" Minimum="16" Maximum="54" SmallChange="1" LargeChange="4" ValueChanged="OnTypographySliderChanged" />
-                            <TextBlock x:Name="LblContextFontSize" Grid.Row="2" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
-                        </Grid>
-
-                        <TextBlock Text="显示内容开关" FontSize="14" FontWeight="Bold" Foreground="#38BDF8" Margin="0,4,0,8" />
-                        <StackPanel>
-                            <CheckBox x:Name="ChkShowTranslation" Content="显示双语翻译行（当歌曲包含中文/外文翻译时自动展示）" Checked="OnTypographyCheckChanged" Unchecked="OnTypographyCheckChanged" />
-                            <CheckBox x:Name="ChkShowContextLines" Content="显示上一句与下一句上下文歌词" Checked="OnTypographyCheckChanged" Unchecked="OnTypographyCheckChanged" />
-                            <CheckBox x:Name="ChkShowTrackHeader" Content="显示顶部歌曲与歌手标题栏" Checked="OnTypographyCheckChanged" Unchecked="OnTypographyCheckChanged" />
-                        </StackPanel>
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
-
-            <!-- TAB 3: 色彩与动效 -->
-            <TabItem Header="🎨 色彩与动效">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="4,4,10,4">
-                    <StackPanel>
-                        <TextBlock Text="一键主题配色预设" FontSize="14" FontWeight="Bold" Foreground="#38BDF8" Margin="0,2,0,8" />
-                        <WrapPanel x:Name="PresetButtonsPanel" Margin="0,0,0,14" />
-
-                        <TextBlock Text="卡拉OK与切行动效" FontSize="14" FontWeight="Bold" Foreground="#38BDF8" Margin="0,2,0,8" />
-                        <WrapPanel Margin="0,0,0,8">
-                            <CheckBox x:Name="ChkKaraokeHighlight" Content="逐字渐变擦除高亮 (YRC)" Margin="0,0,22,0" Checked="OnAnimationCheckChanged" Unchecked="OnAnimationCheckChanged" />
-                            <CheckBox x:Name="ChkWordLift" Content="正在唱的单字韵律上浮" Margin="0,0,22,0" Checked="OnAnimationCheckChanged" Unchecked="OnAnimationCheckChanged" />
-                            <CheckBox x:Name="ChkLineTransition" Content="切行平滑滚动与缩放过渡" Checked="OnAnimationCheckChanged" Unchecked="OnAnimationCheckChanged" />
-                        </WrapPanel>
-
-                        <Grid Margin="0,0,0,14">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="180" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="85" />
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="32" />
-                                <RowDefinition Height="32" />
-                                <RowDefinition Height="32" />
-                                <RowDefinition Height="32" />
-                            </Grid.RowDefinitions>
-
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="切行动画时长 (ms)" VerticalAlignment="Center" />
-                            <Slider x:Name="SldTransitionMs" Grid.Row="0" Grid.Column="1" Minimum="60" Maximum="480" ValueChanged="OnEffectsSliderChanged" />
-                            <TextBlock x:Name="LblTransitionMs" Grid.Row="0" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#CBD5E1" />
-
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="文字描边粗细 (px)" VerticalAlignment="Center" />
-                            <Slider x:Name="SldStrokeWidth" Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="12" SmallChange="0.5" ValueChanged="OnEffectsSliderChanged" />
-                            <TextBlock x:Name="LblStrokeWidth" Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#CBD5E1" />
-
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="投影模糊半径 (px)" VerticalAlignment="Center" />
-                            <Slider x:Name="SldShadowBlur" Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="20" SmallChange="0.5" ValueChanged="OnEffectsSliderChanged" />
-                            <TextBlock x:Name="LblShadowBlur" Grid.Row="2" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#CBD5E1" />
-
-                            <TextBlock Grid.Row="3" Grid.Column="0" Text="底板圆角半径 (px)" VerticalAlignment="Center" />
-                            <Slider x:Name="SldCornerRadius" Grid.Row="3" Grid.Column="1" Minimum="0" Maximum="48" SmallChange="1" ValueChanged="OnEffectsSliderChanged" />
-                            <TextBlock x:Name="LblCornerRadius" Grid.Row="3" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#CBD5E1" />
-                        </Grid>
-
-                        <TextBlock Text="自定义颜色 (#AARRGGBB 或点击色块取色)" FontSize="14" FontWeight="Bold" Foreground="#38BDF8" Margin="0,2,0,8" />
-                        <UniformGrid Columns="3">
-                            <!-- Sung Top -->
-                            <StackPanel Orientation="Horizontal" Margin="0,4,12,4">
-                                <TextBlock Text="已唱顶部色" Width="80" VerticalAlignment="Center" />
-                                <Button x:Name="BtnColorSungTop" Width="28" Height="26" Margin="0,0,6,0" Tag="SungTop" Click="OnColorSwatchClick" />
-                                <TextBox x:Name="TxtColorSungTop" Width="100" Style="{StaticResource DarkTextBoxStyle}" Tag="SungTop" LostFocus="OnColorTextLostFocus" KeyDown="OnColorTextKeyDown" />
-                            </StackPanel>
-
-                            <!-- Sung Bottom -->
-                            <StackPanel Orientation="Horizontal" Margin="0,4,12,4">
-                                <TextBlock Text="已唱底部色" Width="80" VerticalAlignment="Center" />
-                                <Button x:Name="BtnColorSungBottom" Width="28" Height="26" Margin="0,0,6,0" Tag="SungBottom" Click="OnColorSwatchClick" />
-                                <TextBox x:Name="TxtColorSungBottom" Width="100" Style="{StaticResource DarkTextBoxStyle}" Tag="SungBottom" LostFocus="OnColorTextLostFocus" KeyDown="OnColorTextKeyDown" />
-                            </StackPanel>
-
-                            <!-- Sung Glow -->
-                            <StackPanel Orientation="Horizontal" Margin="0,4,12,4">
-                                <TextBlock Text="已唱发光色" Width="80" VerticalAlignment="Center" />
-                                <Button x:Name="BtnColorSungGlow" Width="28" Height="26" Margin="0,0,6,0" Tag="SungGlow" Click="OnColorSwatchClick" />
-                                <TextBox x:Name="TxtColorSungGlow" Width="100" Style="{StaticResource DarkTextBoxStyle}" Tag="SungGlow" LostFocus="OnColorTextLostFocus" KeyDown="OnColorTextKeyDown" />
-                            </StackPanel>
-
-                            <!-- Unsung Top -->
-                            <StackPanel Orientation="Horizontal" Margin="0,4,12,4">
-                                <TextBlock Text="未唱顶部色" Width="80" VerticalAlignment="Center" />
-                                <Button x:Name="BtnColorUnsungTop" Width="28" Height="26" Margin="0,0,6,0" Tag="UnsungTop" Click="OnColorSwatchClick" />
-                                <TextBox x:Name="TxtColorUnsungTop" Width="100" Style="{StaticResource DarkTextBoxStyle}" Tag="UnsungTop" LostFocus="OnColorTextLostFocus" KeyDown="OnColorTextKeyDown" />
-                            </StackPanel>
-
-                            <!-- Unsung Bottom -->
-                            <StackPanel Orientation="Horizontal" Margin="0,4,12,4">
-                                <TextBlock Text="未唱底部色" Width="80" VerticalAlignment="Center" />
-                                <Button x:Name="BtnColorUnsungBottom" Width="28" Height="26" Margin="0,0,6,0" Tag="UnsungBottom" Click="OnColorSwatchClick" />
-                                <TextBox x:Name="TxtColorUnsungBottom" Width="100" Style="{StaticResource DarkTextBoxStyle}" Tag="UnsungBottom" LostFocus="OnColorTextLostFocus" KeyDown="OnColorTextKeyDown" />
-                            </StackPanel>
-
-                            <!-- Translation -->
-                            <StackPanel Orientation="Horizontal" Margin="0,4,12,4">
-                                <TextBlock Text="翻译行颜色" Width="80" VerticalAlignment="Center" />
-                                <Button x:Name="BtnColorTranslation" Width="28" Height="26" Margin="0,0,6,0" Tag="Translation" Click="OnColorSwatchClick" />
-                                <TextBox x:Name="TxtColorTranslation" Width="100" Style="{StaticResource DarkTextBoxStyle}" Tag="Translation" LostFocus="OnColorTextLostFocus" KeyDown="OnColorTextKeyDown" />
-                            </StackPanel>
-
-                            <!-- Context -->
-                            <StackPanel Orientation="Horizontal" Margin="0,4,12,4">
-                                <TextBlock Text="上下文颜色" Width="80" VerticalAlignment="Center" />
-                                <Button x:Name="BtnColorContext" Width="28" Height="26" Margin="0,0,6,0" Tag="Context" Click="OnColorSwatchClick" />
-                                <TextBox x:Name="TxtColorContext" Width="100" Style="{StaticResource DarkTextBoxStyle}" Tag="Context" LostFocus="OnColorTextLostFocus" KeyDown="OnColorTextKeyDown" />
-                            </StackPanel>
-
-                            <!-- Stroke -->
-                            <StackPanel Orientation="Horizontal" Margin="0,4,12,4">
-                                <TextBlock Text="文字描边色" Width="80" VerticalAlignment="Center" />
-                                <Button x:Name="BtnColorStroke" Width="28" Height="26" Margin="0,0,6,0" Tag="Stroke" Click="OnColorSwatchClick" />
-                                <TextBox x:Name="TxtColorStroke" Width="100" Style="{StaticResource DarkTextBoxStyle}" Tag="Stroke" LostFocus="OnColorTextLostFocus" KeyDown="OnColorTextKeyDown" />
-                            </StackPanel>
-
-                            <!-- Background -->
-                            <StackPanel Orientation="Horizontal" Margin="0,4,12,4">
-                                <TextBlock Text="背景底板色" Width="80" VerticalAlignment="Center" />
-                                <Button x:Name="BtnColorBackground" Width="28" Height="26" Margin="0,0,6,0" Tag="Background" Click="OnColorSwatchClick" />
-                                <TextBox x:Name="TxtColorBackground" Width="100" Style="{StaticResource DarkTextBoxStyle}" Tag="Background" LostFocus="OnColorTextLostFocus" KeyDown="OnColorTextKeyDown" />
-                            </StackPanel>
-                        </UniformGrid>
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
-
-            <!-- TAB 4: 时间轴与系统集成 -->
-            <TabItem Header="⏱️ 时间轴与系统集成">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="4,4,10,4">
-                    <StackPanel>
-                        <TextBlock Text="全局歌词时间偏移调节" FontSize="14" FontWeight="Bold" Foreground="#38BDF8" Margin="0,2,0,6" />
-                        <TextBlock Text="当播放器蓝牙/无线串流存在音频延迟时，可通过偏移微调让歌词与声音完全同步（正值 = 歌词提前出现；负值 = 歌词延后出现）。"
-                                   Foreground="{StaticResource MutedTextBrush}"
-                                   FontSize="12"
-                                   Margin="0,0,0,8" />
-
-                        <Grid Margin="0,0,0,8">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="150" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="110" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="全局时间偏移 (ms)" VerticalAlignment="Center" />
-                            <Slider x:Name="SldGlobalOffset" Grid.Column="1" Minimum="-5000" Maximum="5000" SmallChange="50" LargeChange="200" ValueChanged="OnGlobalOffsetSliderChanged" />
-                            <TextBlock x:Name="LblGlobalOffset" Grid.Column="2" Text="+0 ms (0.00s)" VerticalAlignment="Center" HorizontalAlignment="Right" FontWeight="SemiBold" Foreground="#7DD3FC" />
-                        </Grid>
-
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
-                            <Button Content="-500 ms" Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,0" Tag="-500" Click="OnOffsetStepClick" />
-                            <Button Content="-100 ms" Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,0" Tag="-100" Click="OnOffsetStepClick" />
-                            <Button Content="重置全局 0 ms" Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,0" Tag="0" Click="OnOffsetResetClick" />
-                            <Button Content="+100 ms" Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,0" Tag="100" Click="OnOffsetStepClick" />
-                            <Button Content="+500 ms" Style="{StaticResource ActionButtonStyle}" Tag="500" Click="OnOffsetStepClick" />
+                    <!-- ==================== PAGE 2: 字体与排版布局 ==================== -->
+                    <StackPanel x:Name="PageTypography" Visibility="Collapsed">
+                        <StackPanel Margin="2,0,2,10">
+                            <TextBlock Text="字体与排版布局" FontSize="20" FontWeight="Bold" Foreground="#F8FAFC" />
+                            <TextBlock Text="自定义歌词字体族、三级字号比例以及双语翻译与上下文行展示开关" FontSize="12.5" Foreground="{StaticResource MutedTextBrush}" Margin="0,2,0,0" />
                         </StackPanel>
 
-                        <DockPanel Margin="0,2,0,6">
-                            <TextBlock Text="单曲专属时间偏移（自动按歌曲记忆）" FontSize="14" FontWeight="Bold" Foreground="#38BDF8" VerticalAlignment="Center" />
-                            <TextBlock x:Name="LblTrackOffsetTarget" Text="当前曲目：未在播放" Foreground="{StaticResource MutedTextBrush}" FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Center" />
-                        </DockPanel>
-                        <Grid Margin="0,0,0,8">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="150" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="110" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="当前单曲偏移 (ms)" VerticalAlignment="Center" />
-                            <Slider x:Name="SldTrackOffset" Grid.Column="1" Minimum="-5000" Maximum="5000" SmallChange="50" LargeChange="200" ValueChanged="OnTrackOffsetSliderChanged" />
-                            <TextBlock x:Name="LblTrackOffset" Grid.Column="2" Text="+0 ms (0.00s)" VerticalAlignment="Center" HorizontalAlignment="Right" FontWeight="SemiBold" Foreground="#7DD3FC" />
-                        </Grid>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                            <Button Content="-200 ms" Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,0" Tag="-200" Click="OnTrackOffsetStepClick" />
-                            <Button Content="-50 ms" Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,0" Tag="-50" Click="OnTrackOffsetStepClick" />
-                            <Button Content="重置单曲 0 ms" Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,0" Tag="0" Click="OnTrackOffsetResetClick" />
-                            <Button Content="+50 ms" Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,0" Tag="50" Click="OnTrackOffsetStepClick" />
-                            <Button Content="+200 ms" Style="{StaticResource ActionButtonStyle}" Tag="200" Click="OnTrackOffsetStepClick" />
-                        </StackPanel>
+                        <Border Style="{StaticResource SettingsCardBorderStyle}">
+                            <DockPanel>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="歌词显示字体" FontSize="13.5" FontWeight="SemiBold" />
+                                    <TextBlock Text="可从本机已安装字体中选择或直接输入字体名称" FontSize="11.5" Foreground="{StaticResource MutedTextBrush}" Margin="0,2,0,0" />
+                                </StackPanel>
 
-                        <TextBlock Text="歌词源优先级偏好（支持在 SteamVR Dashboard 内一键切换）" FontSize="14" FontWeight="Bold" Foreground="#38BDF8" Margin="0,2,0,6" />
-                        <WrapPanel Margin="0,0,0,14">
-                            <RadioButton x:Name="RbSourceAuto" Content="⚡ 自动优选 (Auto)" GroupName="LyricsSource" Margin="0,0,20,6" Checked="OnLyricsSourceRadioChecked" />
-                            <RadioButton x:Name="RbSourceNetEase" Content="🎵 网易云音乐 (YRC逐字/双语)" GroupName="LyricsSource" Margin="0,0,20,6" Checked="OnLyricsSourceRadioChecked" />
-                            <RadioButton x:Name="RbSourceQqMusic" Content="🎶 QQ音乐 (LRC/双语)" GroupName="LyricsSource" Margin="0,0,20,6" Checked="OnLyricsSourceRadioChecked" />
-                            <RadioButton x:Name="RbSourceLrclib" Content="🌐 LRCLIB 国际曲库" GroupName="LyricsSource" Margin="0,0,20,6" Checked="OnLyricsSourceRadioChecked" />
-                            <RadioButton x:Name="RbSourceLocal" Content="📁 本地 .lrc 目录优先" GroupName="LyricsSource" Margin="0,0,10,6" Checked="OnLyricsSourceRadioChecked" />
-                        </WrapPanel>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                    <ComboBox x:Name="CmbFontFamily"
+                                              Width="250"
+                                              Height="32"
+                                              IsEditable="True"
+                                              VerticalContentAlignment="Center"
+                                              Margin="0,0,20,0"
+                                              SelectionChanged="OnFontFamilySelectionChanged"
+                                              LostFocus="OnFontFamilyLostFocus" />
+                                    <CheckBox x:Name="ChkBold"
+                                              Content="粗体字重 (Bold)"
+                                              Checked="OnTypographyCheckChanged"
+                                              Unchecked="OnTypographyCheckChanged" />
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
 
-                        <TextBlock Text="本地 .lrc 歌词搜索目录" FontSize="14" FontWeight="Bold" Foreground="#38BDF8" Margin="0,2,0,6" />
-                        <Grid Margin="0,0,0,16">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <ListBox x:Name="LstLocalFolders"
-                                     Grid.Column="0"
-                                     Height="68"
-                                     Background="#0D1322"
-                                     Foreground="#E2E8F0"
-                                     BorderBrush="#334155"
-                                     Margin="0,0,12,0" />
-                            <StackPanel Grid.Column="1" VerticalAlignment="Top">
-                                <Button Content="➕ 添加文件夹…" Style="{StaticResource ActionButtonStyle}" Margin="0,0,0,8" Click="OnAddLocalFolderClick" />
-                                <Button Content="➖ 移除选中项" Style="{StaticResource ActionButtonStyle}" Click="OnRemoveLocalFolderClick" />
-                            </StackPanel>
-                        </Grid>
-
-                        <Border Background="#0F172A" BorderBrush="#1E293B" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,14">
+                        <Border Style="{StaticResource SettingsCardBorderStyle}">
                             <StackPanel>
-                                <TextBlock Text="🚀 SteamVR 自动启动与应用清单注册 (vrmanifest)" FontSize="14" FontWeight="Bold" Foreground="#38BDF8" Margin="0,0,0,6" />
-                                <WrapPanel Margin="0,0,0,6">
-                                    <CheckBox x:Name="ChkAutoStartWithSteamVr"
-                                              Content="随 SteamVR 启动自动运行 VRLyrics（自动最小化到系统托盘）"
-                                              Margin="0,0,24,4"
-                                              Checked="OnSteamVrLifecycleCheckChanged"
-                                              Unchecked="OnSteamVrLifecycleCheckChanged" />
-                                    <CheckBox x:Name="ChkExitWithSteamVr"
-                                              Content="当 SteamVR 退出时自动关闭 VRLyrics"
-                                              Margin="0,0,0,4"
-                                              Checked="OnSteamVrLifecycleCheckChanged"
-                                              Unchecked="OnSteamVrLifecycleCheckChanged" />
+                                <TextBlock Text="三级字号比例调节" FontSize="13.5" FontWeight="SemiBold" Foreground="#38BDF8" Margin="0,0,0,10" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="190" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="90" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="36" />
+                                        <RowDefinition Height="36" />
+                                        <RowDefinition Height="36" />
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="当前主歌词字号" VerticalAlignment="Center" />
+                                    <Slider x:Name="SldMainFontSize" Grid.Row="0" Grid.Column="1" Minimum="28" Maximum="84" SmallChange="1" LargeChange="4" ValueChanged="OnTypographySliderChanged" />
+                                    <TextBlock x:Name="LblMainFontSize" Grid.Row="0" Grid.Column="2" Text="52 px" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="双语翻译行字号" VerticalAlignment="Center" />
+                                    <Slider x:Name="SldTransFontSize" Grid.Row="1" Grid.Column="1" Minimum="18" Maximum="56" SmallChange="1" LargeChange="4" ValueChanged="OnTypographySliderChanged" />
+                                    <TextBlock x:Name="LblTransFontSize" Grid.Row="1" Grid.Column="2" Text="30 px" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="上下句预览字号" VerticalAlignment="Center" />
+                                    <Slider x:Name="SldContextFontSize" Grid.Row="2" Grid.Column="1" Minimum="18" Maximum="56" SmallChange="1" LargeChange="4" ValueChanged="OnTypographySliderChanged" />
+                                    <TextBlock x:Name="LblContextFontSize" Grid.Row="2" Grid.Column="2" Text="32 px" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource SettingsCardBorderStyle}">
+                            <DockPanel>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="显示双语翻译行" FontSize="13.5" FontWeight="SemiBold" />
+                                    <TextBlock Text="当外语歌曲包含中文翻译时，在主歌词正下方同步渲染译文" FontSize="11.5" Foreground="{StaticResource MutedTextBrush}" Margin="0,2,0,0" />
+                                </StackPanel>
+                                <CheckBox x:Name="ChkShowTranslation" HorizontalAlignment="Right" Checked="OnTypographyCheckChanged" Unchecked="OnTypographyCheckChanged" />
+                            </DockPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource SettingsCardBorderStyle}">
+                            <DockPanel>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="显示上一句 / 下一句上下文歌词" FontSize="13.5" FontWeight="SemiBold" />
+                                    <TextBlock Text="在主歌词上下方半透明预览相邻歌词行，提前预知下一句唱词" FontSize="11.5" Foreground="{StaticResource MutedTextBrush}" Margin="0,2,0,0" />
+                                </StackPanel>
+                                <CheckBox x:Name="ChkShowContextLines" HorizontalAlignment="Right" Checked="OnTypographyCheckChanged" Unchecked="OnTypographyCheckChanged" />
+                            </DockPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource SettingsCardBorderStyle}">
+                            <DockPanel>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="显示顶部歌曲名与播放时间进度条" FontSize="13.5" FontWeight="SemiBold" />
+                                    <TextBlock Text="在叠加层顶部展示当前歌名、歌手及播放时间" FontSize="11.5" Foreground="{StaticResource MutedTextBrush}" Margin="0,2,0,0" />
+                                </StackPanel>
+                                <CheckBox x:Name="ChkShowTrackHeader" HorizontalAlignment="Right" Checked="OnTypographyCheckChanged" Unchecked="OnTypographyCheckChanged" />
+                            </DockPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- ==================== PAGE 3: 色彩主题与动效 ==================== -->
+                    <StackPanel x:Name="PageColors" Visibility="Collapsed">
+                        <StackPanel Margin="2,0,2,10">
+                            <TextBlock Text="色彩主题与动效" FontSize="20" FontWeight="Bold" Foreground="#F8FAFC" />
+                            <TextBlock Text="一键切换精选卡拉OK配色方案，或点击色块通过现代调色器精细定制每一处光效" FontSize="12.5" Foreground="{StaticResource MutedTextBrush}" Margin="0,2,0,0" />
+                        </StackPanel>
+
+                        <Border Style="{StaticResource SettingsCardBorderStyle}">
+                            <StackPanel>
+                                <TextBlock Text="一键精选配色主题" FontSize="13.5" FontWeight="SemiBold" Foreground="#38BDF8" Margin="0,0,0,10" />
+                                <WrapPanel x:Name="PresetButtonsPanel" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource SettingsCardBorderStyle}">
+                            <StackPanel>
+                                <TextBlock Text="卡拉OK动效与描边阴影参数" FontSize="13.5" FontWeight="SemiBold" Foreground="#38BDF8" Margin="0,0,0,10" />
+                                <WrapPanel Margin="0,0,0,12">
+                                    <CheckBox x:Name="ChkKaraokeHighlight" Content="🎤 逐字渐变擦除高亮" Margin="0,0,26,6" Checked="OnAnimationCheckChanged" Unchecked="OnAnimationCheckChanged" />
+                                    <CheckBox x:Name="ChkWordLift" Content="🎵 正在演唱单字微抬律动" Margin="0,0,26,6" Checked="OnAnimationCheckChanged" Unchecked="OnAnimationCheckChanged" />
+                                    <CheckBox x:Name="ChkLineTransition" Content="🌊 切行平滑上滑缩放动画" Margin="0,0,0,6" Checked="OnAnimationCheckChanged" Unchecked="OnAnimationCheckChanged" />
                                 </WrapPanel>
-                                <TextBlock x:Name="TxtManifestStatus" Foreground="{StaticResource MutedTextBrush}" FontSize="12" Margin="0,0,0,8" TextWrapping="Wrap" />
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="190" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="90" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="34" />
+                                        <RowDefinition Height="34" />
+                                        <RowDefinition Height="34" />
+                                        <RowDefinition Height="34" />
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="切行过渡动画时长" VerticalAlignment="Center" />
+                                    <Slider x:Name="SldTransitionMs" Grid.Row="0" Grid.Column="1" Minimum="60" Maximum="500" SmallChange="10" LargeChange="40" ValueChanged="OnEffectsSliderChanged" />
+                                    <TextBlock x:Name="LblTransitionMs" Grid.Row="0" Grid.Column="2" Text="220 ms" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="文字抗干扰描边粗细" VerticalAlignment="Center" />
+                                    <Slider x:Name="SldStrokeWidth" Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="12" SmallChange="0.5" LargeChange="1" ValueChanged="OnEffectsSliderChanged" />
+                                    <TextBlock x:Name="LblStrokeWidth" Grid.Row="1" Grid.Column="2" Text="5.5 px" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="文字发光与阴影半径" VerticalAlignment="Center" />
+                                    <Slider x:Name="SldShadowBlur" Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="20" SmallChange="0.5" LargeChange="2" ValueChanged="OnEffectsSliderChanged" />
+                                    <TextBlock x:Name="LblShadowBlur" Grid.Row="2" Grid.Column="2" Text="8.0 px" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
+
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="半透明底板圆角半径" VerticalAlignment="Center" />
+                                    <Slider x:Name="SldCornerRadius" Grid.Row="3" Grid.Column="1" Minimum="0" Maximum="60" SmallChange="2" LargeChange="8" ValueChanged="OnEffectsSliderChanged" />
+                                    <TextBlock x:Name="LblCornerRadius" Grid.Row="3" Grid.Column="2" Text="26 px" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#7DD3FC" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource SettingsCardBorderStyle}">
+                            <StackPanel>
+                                <TextBlock Text="精细颜色自定义（点击色块打开 Fluent 拾色器，或直接输入 #AARRGGBB）" FontSize="13.5" FontWeight="SemiBold" Foreground="#38BDF8" Margin="0,0,0,10" />
+                                <UniformGrid Columns="3">
+                                    <StackPanel Orientation="Horizontal" Margin="0,5">
+                                        <TextBlock Text="已唱渐变(上)" Width="82" VerticalAlignment="Center" />
+                                        <Button x:Name="BtnColorSungTop" Width="30" Height="26" Margin="0,0,6,0" Tag="SungTop" Cursor="Hand" Click="OnColorSwatchClick" />
+                                        <TextBox x:Name="TxtColorSungTop" Width="98" Style="{StaticResource DarkTextBoxStyle}" Tag="SungTop" LostFocus="OnColorTextLostFocus" KeyDown="OnColorTextKeyDown" />
+                                    </StackPanel>
+
+                                    <StackPanel Orientation="Horizontal" Margin="0,5">
+                                        <TextBlock Text="已唱渐变(下)" Width="82" VerticalAlignment="Center" />
+                                        <Button x:Name="BtnColorSungBottom" Width="30" Height="26" Margin="0,0,6,0" Tag="SungBottom" Cursor="Hand" Click="OnColorSwatchClick" />
+                                        <TextBox x:Name="TxtColorSungBottom" Width="98" Style="{StaticResource DarkTextBoxStyle}" Tag="SungBottom" LostFocus="OnColorTextLostFocus" KeyDown="OnColorTextKeyDown" />
+                                    </StackPanel>
+
+                                    <StackPanel Orientation="Horizontal" Margin="0,5">
+                                        <TextBlock Text="已唱外发光" Width="82" VerticalAlignment="Center" />
+                                        <Button x:Name="BtnColorSungGlow" Width="30" Height="26" Margin="0,0,6,0" Tag="SungGlow" Cursor="Hand" Click="OnColorSwatchClick" />
+                                        <TextBox x:Name="TxtColorSungGlow" Width="98" Style="{StaticResource DarkTextBoxStyle}" Tag="SungGlow" LostFocus="OnColorTextLostFocus" KeyDown="OnColorTextKeyDown" />
+                                    </StackPanel>
+
+                                    <StackPanel Orientation="Horizontal" Margin="0,5">
+                                        <TextBlock Text="未唱渐变(上)" Width="82" VerticalAlignment="Center" />
+                                        <Button x:Name="BtnColorUnsungTop" Width="30" Height="26" Margin="0,0,6,0" Tag="UnsungTop" Cursor="Hand" Click="OnColorSwatchClick" />
+                                        <TextBox x:Name="TxtColorUnsungTop" Width="98" Style="{StaticResource DarkTextBoxStyle}" Tag="UnsungTop" LostFocus="OnColorTextLostFocus" KeyDown="OnColorTextKeyDown" />
+                                    </StackPanel>
+
+                                    <StackPanel Orientation="Horizontal" Margin="0,5">
+                                        <TextBlock Text="未唱渐变(下)" Width="82" VerticalAlignment="Center" />
+                                        <Button x:Name="BtnColorUnsungBottom" Width="30" Height="26" Margin="0,0,6,0" Tag="UnsungBottom" Cursor="Hand" Click="OnColorSwatchClick" />
+                                        <TextBox x:Name="TxtColorUnsungBottom" Width="98" Style="{StaticResource DarkTextBoxStyle}" Tag="UnsungBottom" LostFocus="OnColorTextLostFocus" KeyDown="OnColorTextKeyDown" />
+                                    </StackPanel>
+
+                                    <StackPanel Orientation="Horizontal" Margin="0,5">
+                                        <TextBlock Text="翻译文字色" Width="82" VerticalAlignment="Center" />
+                                        <Button x:Name="BtnColorTranslation" Width="30" Height="26" Margin="0,0,6,0" Tag="Translation" Cursor="Hand" Click="OnColorSwatchClick" />
+                                        <TextBox x:Name="TxtColorTranslation" Width="98" Style="{StaticResource DarkTextBoxStyle}" Tag="Translation" LostFocus="OnColorTextLostFocus" KeyDown="OnColorTextKeyDown" />
+                                    </StackPanel>
+
+                                    <StackPanel Orientation="Horizontal" Margin="0,5">
+                                        <TextBlock Text="上下文行色" Width="82" VerticalAlignment="Center" />
+                                        <Button x:Name="BtnColorContext" Width="30" Height="26" Margin="0,0,6,0" Tag="Context" Cursor="Hand" Click="OnColorSwatchClick" />
+                                        <TextBox x:Name="TxtColorContext" Width="98" Style="{StaticResource DarkTextBoxStyle}" Tag="Context" LostFocus="OnColorTextLostFocus" KeyDown="OnColorTextKeyDown" />
+                                    </StackPanel>
+
+                                    <StackPanel Orientation="Horizontal" Margin="0,5">
+                                        <TextBlock Text="文字描边色" Width="82" VerticalAlignment="Center" />
+                                        <Button x:Name="BtnColorStroke" Width="30" Height="26" Margin="0,0,6,0" Tag="Stroke" Cursor="Hand" Click="OnColorSwatchClick" />
+                                        <TextBox x:Name="TxtColorStroke" Width="98" Style="{StaticResource DarkTextBoxStyle}" Tag="Stroke" LostFocus="OnColorTextLostFocus" KeyDown="OnColorTextKeyDown" />
+                                    </StackPanel>
+
+                                    <StackPanel Orientation="Horizontal" Margin="0,5">
+                                        <TextBlock Text="背景底板色" Width="82" VerticalAlignment="Center" />
+                                        <Button x:Name="BtnColorBackground" Width="30" Height="26" Margin="0,0,6,0" Tag="Background" Cursor="Hand" Click="OnColorSwatchClick" />
+                                        <TextBox x:Name="TxtColorBackground" Width="98" Style="{StaticResource DarkTextBoxStyle}" Tag="Background" LostFocus="OnColorTextLostFocus" KeyDown="OnColorTextKeyDown" />
+                                    </StackPanel>
+                                </UniformGrid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- ==================== PAGE 4: 时间轴与系统集成 ==================== -->
+                    <StackPanel x:Name="PageSystem" Visibility="Collapsed">
+                        <StackPanel Margin="2,0,2,10">
+                            <TextBlock Text="时间轴与系统集成" FontSize="20" FontWeight="Bold" Foreground="#F8FAFC" />
+                            <TextBlock Text="微调全局/单曲时间轴偏移、切换歌词源优先级，以及管理随 SteamVR 自动启动" FontSize="12.5" Foreground="{StaticResource MutedTextBrush}" Margin="0,2,0,0" />
+                        </StackPanel>
+
+                        <!-- Global Offset Card -->
+                        <Border Style="{StaticResource SettingsCardBorderStyle}">
+                            <StackPanel>
+                                <TextBlock Text="全局歌词时间偏移调节" FontSize="13.5" FontWeight="SemiBold" Foreground="#38BDF8" />
+                                <TextBlock Text="补偿蓝牙耳机或无线串流延迟（正值 = 歌词提前出现；负值 = 歌词延后出现）" FontSize="11.5" Foreground="{StaticResource MutedTextBrush}" Margin="0,2,0,10" />
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="115" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="全局时间偏移 (ms)" VerticalAlignment="Center" />
+                                    <Slider x:Name="SldGlobalOffset" Grid.Column="1" Minimum="-5000" Maximum="5000" SmallChange="50" LargeChange="200" ValueChanged="OnGlobalOffsetSliderChanged" />
+                                    <TextBlock x:Name="LblGlobalOffset" Grid.Column="2" Text="+0 ms (0.00s)" VerticalAlignment="Center" HorizontalAlignment="Right" FontWeight="SemiBold" Foreground="#7DD3FC" />
+                                </Grid>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="-500 ms" Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,0" Tag="-500" Click="OnOffsetStepClick" />
+                                    <Button Content="-100 ms" Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,0" Tag="-100" Click="OnOffsetStepClick" />
+                                    <Button Content="重置全局 0 ms" Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,0" Tag="0" Click="OnOffsetResetClick" />
+                                    <Button Content="+100 ms" Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,0" Tag="100" Click="OnOffsetStepClick" />
+                                    <Button Content="+500 ms" Style="{StaticResource ActionButtonStyle}" Tag="500" Click="OnOffsetStepClick" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Per-Track Offset Card -->
+                        <Border Style="{StaticResource SettingsCardBorderStyle}">
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,8">
+                                    <TextBlock Text="单曲专属时间偏移（自动按歌曲永久记忆）" FontSize="13.5" FontWeight="SemiBold" Foreground="#38BDF8" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="LblTrackOffsetTarget" Text="当前曲目：未在播放" Foreground="{StaticResource MutedTextBrush}" FontSize="11.5" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                </DockPanel>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="115" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="当前单曲偏移 (ms)" VerticalAlignment="Center" />
+                                    <Slider x:Name="SldTrackOffset" Grid.Column="1" Minimum="-5000" Maximum="5000" SmallChange="50" LargeChange="200" ValueChanged="OnTrackOffsetSliderChanged" />
+                                    <TextBlock x:Name="LblTrackOffset" Grid.Column="2" Text="+0 ms (0.00s)" VerticalAlignment="Center" HorizontalAlignment="Right" FontWeight="SemiBold" Foreground="#7DD3FC" />
+                                </Grid>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="-200 ms" Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,0" Tag="-200" Click="OnTrackOffsetStepClick" />
+                                    <Button Content="-50 ms" Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,0" Tag="-50" Click="OnTrackOffsetStepClick" />
+                                    <Button Content="重置单曲 0 ms" Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,0" Tag="0" Click="OnTrackOffsetResetClick" />
+                                    <Button Content="+50 ms" Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,0" Tag="50" Click="OnTrackOffsetStepClick" />
+                                    <Button Content="+200 ms" Style="{StaticResource ActionButtonStyle}" Tag="200" Click="OnTrackOffsetStepClick" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Lyrics Provider Segmented Selector & Local Folders Card -->
+                        <Border Style="{StaticResource SettingsCardBorderStyle}">
+                            <StackPanel>
+                                <TextBlock Text="歌词源优先级偏好（与 SteamVR 仪表盘实时联动）" FontSize="13.5" FontWeight="SemiBold" Foreground="#38BDF8" Margin="0,0,0,8" />
+                                <Border Background="{StaticResource SubCardBgBrush}"
+                                        BorderBrush="#1E293B"
+                                        BorderThickness="1"
+                                        CornerRadius="9"
+                                        Padding="3"
+                                        Margin="0,0,0,12">
+                                    <UniformGrid Columns="5">
+                                        <RadioButton x:Name="RbSourceAuto" Style="{StaticResource SegmentedItemRadioStyle}" Content="⚡ 自动优选" GroupName="LyricsSource" Checked="OnLyricsSourceRadioChecked" />
+                                        <RadioButton x:Name="RbSourceNetEase" Style="{StaticResource SegmentedItemRadioStyle}" Content="🎵 网易云(逐字)" GroupName="LyricsSource" Checked="OnLyricsSourceRadioChecked" />
+                                        <RadioButton x:Name="RbSourceQqMusic" Style="{StaticResource SegmentedItemRadioStyle}" Content="🎶 QQ音乐(双语)" GroupName="LyricsSource" Checked="OnLyricsSourceRadioChecked" />
+                                        <RadioButton x:Name="RbSourceLrclib" Style="{StaticResource SegmentedItemRadioStyle}" Content="🌐 LRCLIB" GroupName="LyricsSource" Checked="OnLyricsSourceRadioChecked" />
+                                        <RadioButton x:Name="RbSourceLocal" Style="{StaticResource SegmentedItemRadioStyle}" Content="📁 本地 .lrc" GroupName="LyricsSource" Checked="OnLyricsSourceRadioChecked" />
+                                    </UniformGrid>
+                                </Border>
+
+                                <TextBlock Text="本地 .lrc 歌词搜索目录" FontSize="12.5" FontWeight="SemiBold" Margin="0,0,0,6" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <ListBox x:Name="LstLocalFolders"
+                                             Grid.Column="0"
+                                             Height="68"
+                                             Background="#090E1A"
+                                             Foreground="#E2E8F0"
+                                             BorderBrush="#334155"
+                                             Margin="0,0,10,0" />
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Top">
+                                        <Button Content="➕ 添加文件夹…" Style="{StaticResource ActionButtonStyle}" Margin="0,0,0,6" Click="OnAddLocalFolderClick" />
+                                        <Button Content="➖ 移除选中项" Style="{StaticResource ActionButtonStyle}" Click="OnRemoveLocalFolderClick" />
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- SteamVR Lifecycle Card -->
+                        <Border Style="{StaticResource SettingsCardBorderStyle}">
+                            <StackPanel>
+                                <TextBlock Text="🚀 SteamVR 自动启动与应用清单注册 (vrmanifest)" FontSize="13.5" FontWeight="SemiBold" Foreground="#38BDF8" Margin="0,0,0,10" />
+                                <DockPanel Margin="0,0,0,8">
+                                    <TextBlock Text="随 SteamVR 启动自动运行 VRLyrics（自动最小化到系统托盘）" VerticalAlignment="Center" />
+                                    <CheckBox x:Name="ChkAutoStartWithSteamVr" HorizontalAlignment="Right" Checked="OnSteamVrLifecycleCheckChanged" Unchecked="OnSteamVrLifecycleCheckChanged" />
+                                </DockPanel>
+                                <DockPanel Margin="0,0,0,10">
+                                    <TextBlock Text="当 SteamVR 退出时自动关闭 VRLyrics" VerticalAlignment="Center" />
+                                    <CheckBox x:Name="ChkExitWithSteamVr" HorizontalAlignment="Right" Checked="OnSteamVrLifecycleCheckChanged" Unchecked="OnSteamVrLifecycleCheckChanged" />
+                                </DockPanel>
+                                <TextBlock x:Name="TxtManifestStatus" Foreground="{StaticResource MutedTextBrush}" FontSize="11.5" Margin="0,0,0,10" TextWrapping="Wrap" />
                                 <WrapPanel>
                                     <Button Content="📝 立即注册/刷新 vrmanifest" Style="{StaticResource ActionButtonStyle}" Margin="0,0,10,0" Click="OnRegisterManifestClick" />
                                     <Button Content="🗑️ 从 SteamVR 移除注册" Style="{StaticResource ActionButtonStyle}" Click="OnUnregisterManifestClick" />
@@ -766,16 +999,21 @@
                             </StackPanel>
                         </Border>
 
-                        <TextBlock Text="配置存储与维护" FontSize="14" FontWeight="Bold" Foreground="#38BDF8" Margin="0,2,0,6" />
-                        <TextBlock x:Name="TxtSettingsFilePath" Foreground="{StaticResource MutedTextBrush}" FontSize="12" Margin="0,0,0,8" />
-                        <WrapPanel>
-                            <Button Content="📂 打开配置与缓存目录" Style="{StaticResource ActionButtonStyle}" Margin="0,0,10,0" Click="OnOpenConfigFolderClick" />
-                            <Button Content="🔄 忽略缓存重新拉取当前歌词" Style="{StaticResource ActionButtonStyle}" Margin="0,0,10,0" Click="OnReloadLyricsClick" />
-                            <Button Content="⚠️ 恢复全部默认设置" Style="{StaticResource DangerButtonStyle}" Click="OnResetAllSettingsClick" />
-                        </WrapPanel>
+                        <!-- Storage & Reset Card -->
+                        <Border Style="{StaticResource SettingsCardBorderStyle}">
+                            <StackPanel>
+                                <TextBlock Text="配置存储与维护" FontSize="13.5" FontWeight="SemiBold" Foreground="#38BDF8" Margin="0,0,0,4" />
+                                <TextBlock x:Name="TxtSettingsFilePath" Foreground="{StaticResource MutedTextBrush}" FontSize="11.5" Margin="0,0,0,10" />
+                                <WrapPanel>
+                                    <Button Content="📂 打开配置与缓存目录" Style="{StaticResource ActionButtonStyle}" Margin="0,0,10,0" Click="OnOpenConfigFolderClick" />
+                                    <Button Content="🔄 忽略缓存重新拉取当前歌词" Style="{StaticResource ActionButtonStyle}" Margin="0,0,10,0" Click="OnReloadLyricsClick" />
+                                    <Button Content="⚠️ 恢复全部默认设置" Style="{StaticResource DangerButtonStyle}" Click="OnResetAllSettingsClick" />
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
-                </ScrollViewer>
-            </TabItem>
-        </TabControl>
+                </Grid>
+            </ScrollViewer>
+        </Grid>
     </Grid>
 </Window>
