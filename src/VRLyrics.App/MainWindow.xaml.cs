@@ -10,6 +10,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using SkiaSharp;
+using VRLyrics.App.Interop;
 using VRLyrics.App.Models;
 using VRLyrics.App.Services;
 using VRLyrics.Core.Models;
@@ -39,6 +40,7 @@ public partial class MainWindow : Window
         _onRequestExit = onRequestExit;
 
         InitializeComponent();
+        SourceInitialized += (_, _) => Win11BackdropHelper.ApplyFluentDarkWindowFrame(this);
         IsVisibleChanged += (_, _) => _isPreviewActive = IsVisible && WindowState != WindowState.Minimized;
         StateChanged += (_, _) => _isPreviewActive = IsVisible && WindowState != WindowState.Minimized;
         PopulateFontFamilies();
@@ -398,6 +400,30 @@ public partial class MainWindow : Window
 
     // ==================== EVENT HANDLERS ====================
 
+    private void OnNavPageRadioChecked(object sender, RoutedEventArgs e)
+    {
+        if (!IsLoaded) return;
+        PagePlacement.Visibility = NavPlacement.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        PageTypography.Visibility = NavTypography.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        PageColors.Visibility = NavColors.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        PageSystem.Visibility = NavSystem.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        MainPageScrollViewer?.ScrollToTop();
+    }
+
+    private void OnTogglePreviewCollapseClick(object sender, RoutedEventArgs e)
+    {
+        if (PreviewCanvasContainer.Visibility == Visibility.Visible)
+        {
+            PreviewCanvasContainer.Visibility = Visibility.Collapsed;
+            BtnTogglePreviewCollapse.Content = "展开预览 ▼";
+        }
+        else
+        {
+            PreviewCanvasContainer.Visibility = Visibility.Visible;
+            BtnTogglePreviewCollapse.Content = "收起预览 ▲";
+        }
+    }
+
     private void OnOverlayEnabledChanged(object sender, RoutedEventArgs e)
     {
         if (_suppressUiEvents) return;
@@ -733,19 +759,15 @@ public partial class MainWindow : Window
     {
         if (sender is not System.Windows.Controls.Button { Tag: string key }) return;
         var currentHex = GetColorHexByKey(_runtime.Settings.Current, key);
-        var skCurrent = ColorParseHelper.Parse(currentHex, SKColors.White);
 
-        using var dlg = new System.Windows.Forms.ColorDialog
+        var picker = new ColorPickerWindow($"调节颜色 · {key}", currentHex)
         {
-            FullOpen = true,
-            Color = System.Drawing.Color.FromArgb(skCurrent.Red, skCurrent.Green, skCurrent.Blue)
+            Owner = this
         };
 
-        if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+        if (picker.ShowDialog() == true)
         {
-            // Preserve existing alpha byte
-            var newHex = $"#{skCurrent.Alpha:X2}{dlg.Color.R:X2}{dlg.Color.G:X2}{dlg.Color.B:X2}";
-            var updated = _runtime.Settings.Update(s => WithColorHexByKey(s, key, newHex));
+            var updated = _runtime.Settings.Update(s => WithColorHexByKey(s, key, picker.SelectedColorHex));
             LoadSettingsIntoControls(updated);
         }
     }
@@ -973,4 +995,61 @@ public partial class MainWindow : Window
 
     private static string FormatTime(TimeSpan? t) =>
         t is { } v ? $"{(int)v.TotalMinutes:00}:{v.Seconds:00}.{v.Milliseconds / 100}" : "--:--";
+
+    public async Task RunUiSelfTestAndScreenshotsAsync(string? dumpDir = null)
+    {
+        if (!string.IsNullOrWhiteSpace(dumpDir))
+            Directory.CreateDirectory(dumpDir);
+
+        var navButtons = new (System.Windows.Controls.RadioButton Button, string Name)[]
+        {
+            (NavPlacement, "ui_page_1_placement.png"),
+            (NavTypography, "ui_page_2_typography.png"),
+            (NavColors, "ui_page_3_colors.png"),
+            (NavSystem, "ui_page_4_system.png"),
+        };
+
+        // Wait briefly so the live preview renders its initial frame
+        await Task.Delay(400);
+
+        foreach (var (btn, fileName) in navButtons)
+        {
+            btn.IsChecked = true;
+            UpdateLayout();
+            await Task.Delay(150);
+            if (!string.IsNullOrWhiteSpace(dumpDir))
+                SaveElementScreenshot(Content as FrameworkElement, System.IO.Path.Combine(dumpDir, fileName));
+        }
+
+        // Test ColorPickerWindow instantiation and rendering
+        var picker = new ColorPickerWindow("调节颜色 · 已唱顶部色 (SungTop)", _runtime.Settings.Current.SungTopColorHex)
+        {
+            Owner = this
+        };
+        picker.Show();
+        picker.UpdateLayout();
+        await Task.Delay(150);
+        if (!string.IsNullOrWhiteSpace(dumpDir))
+            SaveElementScreenshot(picker.Content as FrameworkElement, System.IO.Path.Combine(dumpDir, "ui_dialog_color_picker.png"));
+        picker.Close();
+
+        NavPlacement.IsChecked = true;
+        UpdateLayout();
+    }
+
+    private static void SaveElementScreenshot(FrameworkElement? element, string filePath)
+    {
+        if (element is null || element.ActualWidth <= 0 || element.ActualHeight <= 0)
+            return;
+
+        var width = (int)Math.Ceiling(element.ActualWidth);
+        var height = (int)Math.Ceiling(element.ActualHeight);
+        var rtb = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+        rtb.Render(element);
+
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(rtb));
+        using var fs = File.Create(filePath);
+        encoder.Save(fs);
+    }
 }

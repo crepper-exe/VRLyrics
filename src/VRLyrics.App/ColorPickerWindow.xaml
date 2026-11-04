@@ -1,0 +1,124 @@
+<Window x:Class="VRLyrics.App.ColorPickerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="选择颜色与不透明度"
+        Icon="pack://application:,,,/Assets/app.ico"
+        Width="420"
+        Height="470"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        Background="#0F172A"
+        Foreground="#F1F5F9"
+        FontFamily="Microsoft YaHei UI">
+
+    <Border Background="#0F172A" Padding="20,16,20,18">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- 1. Preview & Hex Input -->
+        <Grid Grid.Row="0" Margin="0,0,0,14">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="64" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0"
+                    Width="54"
+                    Height="54"
+                    CornerRadius="10"
+                    BorderBrush="#475569"
+                    BorderThickness="1.5"
+                    HorizontalAlignment="Left"
+                    Background="#1E293B">
+                <Border x:Name="PreviewColorBorder" CornerRadius="8.5" />
+            </Border>
+
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0,0,0">
+                <TextBlock x:Name="LblTargetName" Text="颜色设置" FontSize="14" FontWeight="SemiBold" Foreground="#38BDF8" Margin="0,0,0,6" />
+                <DockPanel>
+                    <TextBlock Text="HEX (#AARRGGBB)" FontSize="12" Foreground="#94A3B8" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <TextBox x:Name="TxtHex"
+                             FontSize="13"
+                             FontFamily="Consolas"
+                             Padding="8,5"
+                             Background="#090D16"
+                             Foreground="#F8FAFC"
+                             BorderBrush="#334155"
+                             TextChanged="OnHexTextChanged" />
+                </DockPanel>
+            </StackPanel>
+        </Grid>
+
+        <!-- 2. RGBA Sliders -->
+        <Border Grid.Row="1"
+                Background="#151F32"
+                BorderBrush="#24324D"
+                BorderThickness="1"
+                CornerRadius="10"
+                Padding="14,10"
+                Margin="0,0,0,14">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="82" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="46" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="30" />
+                    <RowDefinition Height="30" />
+                    <RowDefinition Height="30" />
+                    <RowDefinition Height="30" />
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="🔴 红色 (R)" VerticalAlignment="Center" FontSize="12.5" />
+                <Slider x:Name="SldR" Grid.Row="0" Grid.Column="1" Minimum="0" Maximum="255" ValueChanged="OnChannelSliderChanged" VerticalAlignment="Center" />
+                <TextBlock x:Name="LblR" Grid.Row="0" Grid.Column="2" Text="255" HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="#FCA5A5" FontFamily="Consolas" />
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="🟢 绿色 (G)" VerticalAlignment="Center" FontSize="12.5" />
+                <Slider x:Name="SldG" Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="255" ValueChanged="OnChannelSliderChanged" VerticalAlignment="Center" />
+                <TextBlock x:Name="LblG" Grid.Row="1" Grid.Column="2" Text="255" HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="#86EFAC" FontFamily="Consolas" />
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="🔵 蓝色 (B)" VerticalAlignment="Center" FontSize="12.5" />
+                <Slider x:Name="SldB" Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="255" ValueChanged="OnChannelSliderChanged" VerticalAlignment="Center" />
+                <TextBlock x:Name="LblB" Grid.Row="2" Grid.Column="2" Text="255" HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="#93C5FD" FontFamily="Consolas" />
+
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="💧 透明度 (A)" VerticalAlignment="Center" FontSize="12.5" />
+                <Slider x:Name="SldA" Grid.Row="3" Grid.Column="1" Minimum="0" Maximum="255" ValueChanged="OnChannelSliderChanged" VerticalAlignment="Center" />
+                <TextBlock x:Name="LblA" Grid.Row="3" Grid.Column="2" Text="255" HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="#CBD5E1" FontFamily="Consolas" />
+            </Grid>
+        </Border>
+
+        <!-- 3. Curated Swatches -->
+        <TextBlock Grid.Row="2" Text="常用高对比歌词色卡（点击快速填入）" FontSize="12" Foreground="#94A3B8" Margin="0,0,0,8" />
+        <WrapPanel x:Name="SwatchWrapPanel" Grid.Row="3" />
+
+        <!-- 4. Dialog Buttons -->
+        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Content="取消"
+                    Width="88"
+                    Padding="10,6"
+                    Margin="0,0,10,0"
+                    Background="#1E293B"
+                    Foreground="#E2E8F0"
+                    BorderBrush="#334155"
+                    IsCancel="True"
+                    Click="OnCancelClick" />
+            <Button Content="确定应用"
+                    Width="96"
+                    Padding="10,6"
+                    Background="#0284C7"
+                    Foreground="White"
+                    BorderBrush="#38BDF8"
+                    FontWeight="SemiBold"
+                    IsDefault="True"
+                    Click="OnOkClick" />
+        </StackPanel>
+    </Grid>
+    </Border>
+</Window>

@@ -91,6 +91,13 @@ public partial class App : System.Windows.Application
             var selfTest = e.Args.Any(a =>
                 string.Equals(a, "--self-test", StringComparison.OrdinalIgnoreCase));
 
+            string? dumpDir = null;
+            for (var i = 0; i < e.Args.Length - 1; i++)
+            {
+                if (string.Equals(e.Args[i], "--dump-ui", StringComparison.OrdinalIgnoreCase))
+                    dumpDir = e.Args[i + 1];
+            }
+
             // Show the window immediately so startup feels instant even if SMTC / OpenVR takes a moment
             if (!startMinimized)
                 ShowSettingsWindow();
@@ -99,7 +106,9 @@ public partial class App : System.Windows.Application
 
             if (selfTest)
             {
-                await Task.Delay(1200);
+                await Task.Delay(500);
+                await _mainWindow.RunUiSelfTestAndScreenshotsAsync(dumpDir);
+                await Task.Delay(300);
                 ExitApplication();
             }
         }
