@@ -10,14 +10,17 @@ public partial class App : System.Windows.Application
 {
     private const string SingleInstanceMutexName = @"Local\VRLyrics_SingleInstance_Mutex";
     private const string ActivateWindowEventName = @"Local\VRLyrics_ActivateWindow_Event";
+    private const string YieldToElevatedEventName = @"Local\VRLyrics_YieldToElevated_Event";
 
     private Mutex? _instanceMutex;
     private bool _ownsMutex;
     private EventWaitHandle? _activateEvent;
+    private EventWaitHandle? _yieldToElevatedEvent;
     private VRLyricsRuntimeHost? _runtime;
     private TrayIconService? _trayIcon;
     private MainWindow? _mainWindow;
     private bool _exiting;
+    private bool _elevationRetryInProgress;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -38,6 +41,16 @@ public partial class App : System.Windows.Application
 
         try
         {
+            var startMinimized = e.Args.Any(a =>
+                string.Equals(a, "--minimized", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(a, "--tray", StringComparison.OrdinalIgnoreCase));
+
+            var selfTest = e.Args.Any(a =>
+                string.Equals(a, "--self-test", StringComparison.OrdinalIgnoreCase));
+
+            var isElevatedRetry = e.Args.Any(a =>
+                string.Equals(a, "--elevated-retry", StringComparison.OrdinalIgnoreCase));
+
             _instanceMutex = new Mutex(false, SingleInstanceMutexName);
             try
             {
@@ -49,15 +62,36 @@ public partial class App : System.Windows.Application
                 _ownsMutex = true;
             }
 
-            if (!_ownsMutex)
+            if (!_ownsMutex && Environment.IsPrivilegedProcess)
             {
-                // Signal the already-running healthy instance to show its settings window.
+                // An elevated instance (e.g. auto-launched by an elevated SteamVR vrserver.exe,
+                // or relaunched with --elevated-retry) is starting while a non-elevated instance
+                // holds the mutex. Ask the non-elevated instance to yield so we can connect to OpenVR.
                 try
                 {
-                    using var evt = EventWaitHandle.OpenExisting(ActivateWindowEventName);
-                    evt.Set();
+                    using var yieldEvt = EventWaitHandle.OpenExisting(YieldToElevatedEventName);
+                    yieldEvt.Set();
+                    _ownsMutex = _instanceMutex.WaitOne(3500, false);
+                }
+                catch (AbandonedMutexException)
+                {
+                    _ownsMutex = true;
                 }
                 catch { }
+            }
+
+            if (!_ownsMutex)
+            {
+                // If launched interactively (not --minimized), signal the running instance to show its window.
+                if (!startMinimized)
+                {
+                    try
+                    {
+                        using var evt = EventWaitHandle.OpenExisting(ActivateWindowEventName);
+                        evt.Set();
+                    }
+                    catch { }
+                }
 
                 _instanceMutex.Dispose();
                 _instanceMutex = null;
@@ -68,12 +102,24 @@ public partial class App : System.Windows.Application
             _activateEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ActivateWindowEventName);
             _ = Task.Run(ListenForActivationSignal);
 
+            if (!Environment.IsPrivilegedProcess)
+            {
+                _yieldToElevatedEvent = new EventWaitHandle(false, EventResetMode.AutoReset, YieldToElevatedEventName);
+                _ = Task.Run(ListenForYieldToElevatedSignal);
+            }
+
             _runtime = new VRLyricsRuntimeHost();
             _runtime.Overlay.VrQuitRequested += () =>
             {
                 if (_runtime.Settings.Current.ExitWithSteamVr)
                     Dispatcher.BeginInvoke(ExitApplication);
             };
+            _runtime.Overlay.VrElevationRequired += () =>
+            {
+                if (!Environment.IsPrivilegedProcess && !selfTest && !isElevatedRetry)
+                    Dispatcher.BeginInvoke(HandleVrElevationRequiredAsync);
+            };
+
             _trayIcon = new TrayIconService(
                 _runtime,
                 openMainWindow: () => Dispatcher.BeginInvoke(ShowSettingsWindow),
@@ -83,13 +129,6 @@ public partial class App : System.Windows.Application
                 _runtime,
                 onMinimizeToTray: () => _trayIcon.ShowMinimizedHintOnce(),
                 onRequestExit: ExitApplication);
-
-            var startMinimized = e.Args.Any(a =>
-                string.Equals(a, "--minimized", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(a, "--tray", StringComparison.OrdinalIgnoreCase));
-
-            var selfTest = e.Args.Any(a =>
-                string.Equals(a, "--self-test", StringComparison.OrdinalIgnoreCase));
 
             string? dumpDir = null;
             for (var i = 0; i < e.Args.Length - 1; i++)
@@ -132,6 +171,68 @@ public partial class App : System.Windows.Application
             {
                 break;
             }
+        }
+    }
+
+    private void ListenForYieldToElevatedSignal()
+    {
+        while (_yieldToElevatedEvent is { } evt && !_exiting)
+        {
+            try
+            {
+                if (evt.WaitOne(1000) && !_exiting)
+                {
+                    Dispatcher.BeginInvoke(ExitApplication);
+                    break;
+                }
+            }
+            catch (ObjectDisposedException)
+            {
+                break;
+            }
+        }
+    }
+
+    private async void HandleVrElevationRequiredAsync()
+    {
+        if (_exiting || _elevationRetryInProgress || Environment.IsPrivilegedProcess)
+            return;
+
+        _elevationRetryInProgress = true;
+
+        // Wait briefly in case SteamVR's own elevated auto-launch process is already starting up
+        // and about to take over via YieldToElevatedEventName (which avoids any UAC prompt).
+        await Task.Delay(2500);
+        if (_exiting)
+            return;
+
+        var exePath = Environment.ProcessPath;
+        if (string.IsNullOrWhiteSpace(exePath) || !File.Exists(exePath))
+            return;
+
+        var wasWindowVisible = _mainWindow?.IsVisible == true;
+        var args = wasWindowVisible ? "--elevated-retry" : "--minimized --elevated-retry";
+
+        try
+        {
+            // Release single-instance handles first so the newly elevated process can immediately acquire the mutex.
+            ReleaseSingleInstanceHandles();
+
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = exePath,
+                Arguments = args,
+                WorkingDirectory = Path.GetDirectoryName(exePath) ?? AppContext.BaseDirectory,
+                UseShellExecute = true,
+                Verb = "runas"
+            };
+            System.Diagnostics.Process.Start(psi);
+            ExitApplication();
+        }
+        catch (Exception ex)
+        {
+            // User declined UAC or launch failed; continue running in desktop mode.
+            LogCrash("HandleVrElevationRequiredAsync", ex);
         }
     }
 
@@ -194,6 +295,14 @@ public partial class App : System.Windows.Application
         }
         catch { }
         _activateEvent = null;
+
+        try
+        {
+            _yieldToElevatedEvent?.Set();
+            _yieldToElevatedEvent?.Dispose();
+        }
+        catch { }
+        _yieldToElevatedEvent = null;
 
         if (_instanceMutex is not null)
         {

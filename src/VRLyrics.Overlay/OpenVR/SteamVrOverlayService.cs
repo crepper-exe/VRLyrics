@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using SkiaSharp;
@@ -9,6 +10,13 @@ using VRLyrics.Overlay.Rendering;
 
 namespace VRLyrics.Overlay.OpenVR;
 
+public enum VrServerProcessStatus
+{
+    NotRunning,
+    Accessible,
+    AccessDeniedNeedsElevation
+}
+
 /// <summary>
 /// Manages the lifecycle of the SteamVR overlay, uploads SkiaSharp frames to it via D3D11 textures,
 /// and handles M5 spatial placement (head-locked, wrist-mounted, world-locked with controller grab-and-drag).
@@ -17,6 +25,16 @@ public sealed class SteamVrOverlayService : IDisposable
 {
     public const string DefaultOverlayKey = "vrlyrics.overlay.main";
     public const string DefaultOverlayName = "VRLyrics";
+
+    private const uint PROCESS_DUP_HANDLE = 0x0040;
+    private const int ERROR_ACCESS_DENIED = 5;
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern IntPtr OpenProcess(uint dwDesiredAccess, bool bInheritHandle, uint dwProcessId);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CloseHandle(IntPtr hObject);
 
     private readonly D3D11TextureBridge _textureBridge = new();
     private readonly WorldOverlayGrabInteractor _grabInteractor = new();
@@ -42,6 +60,12 @@ public sealed class SteamVrOverlayService : IDisposable
     public event Action? QuitRequested;
 
     /// <summary>
+    /// Raised when <c>vrserver.exe</c> is running as Administrator while <c>VRLyrics.exe</c> is running
+    /// without Administrator privileges, which would otherwise fail OpenVR IPC with <c>ERROR_ACCESS_DENIED (5)</c>.
+    /// </summary>
+    public event Action? ElevationRequired;
+
+    /// <summary>
     /// Raised when the user finishes dragging the world-locked overlay with a VR controller
     /// so the updated 3D pose can be persisted to <c>settings.json</c>.
     /// </summary>
@@ -55,6 +79,52 @@ public sealed class SteamVrOverlayService : IDisposable
     }
 
     /// <summary>
+    /// Checks whether <c>vrserver.exe</c> is currently running and whether the current process has sufficient
+    /// privileges to open its handle (<c>PROCESS_DUP_HANDLE</c>) as required by <c>openvr_api.dll</c>.
+    /// </summary>
+    public static VrServerProcessStatus CheckVrServerProcessAccess()
+    {
+        Process[] procs;
+        try
+        {
+            procs = Process.GetProcessesByName("vrserver");
+        }
+        catch
+        {
+            return VrServerProcessStatus.NotRunning;
+        }
+
+        if (procs.Length == 0)
+            return VrServerProcessStatus.NotRunning;
+
+        var sawAccessDenied = false;
+        foreach (var proc in procs)
+        {
+            try
+            {
+                var hProc = OpenProcess(PROCESS_DUP_HANDLE, bInheritHandle: false, (uint)proc.Id);
+                if (hProc != IntPtr.Zero)
+                {
+                    CloseHandle(hProc);
+                    return VrServerProcessStatus.Accessible;
+                }
+
+                if (Marshal.GetLastWin32Error() == ERROR_ACCESS_DENIED)
+                    sawAccessDenied = true;
+            }
+            catch { }
+            finally
+            {
+                try { proc.Dispose(); } catch { }
+            }
+        }
+
+        return sawAccessDenied
+            ? VrServerProcessStatus.AccessDeniedNeedsElevation
+            : VrServerProcessStatus.NotRunning;
+    }
+
+    /// <summary>
     /// Attempts to initialize OpenVR in overlay mode and create the main lyrics overlay.
     /// Returns false if SteamVR is not running yet.
     /// </summary>
@@ -62,6 +132,20 @@ public sealed class SteamVrOverlayService : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (IsConnected) return true;
+
+        var serverStatus = CheckVrServerProcessAccess();
+        if (serverStatus == VrServerProcessStatus.NotRunning)
+        {
+            LastStatusMessage = "未连接 SteamVR（等待 SteamVR 启动…）";
+            return false;
+        }
+
+        if (serverStatus == VrServerProcessStatus.AccessDeniedNeedsElevation)
+        {
+            LastStatusMessage = "SteamVR 正以管理员权限运行，正在请求管理员权限连接…";
+            try { ElevationRequired?.Invoke(); } catch { }
+            return false;
+        }
 
         try
         {

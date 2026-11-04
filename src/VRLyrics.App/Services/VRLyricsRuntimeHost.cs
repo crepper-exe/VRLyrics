@@ -84,8 +84,8 @@ public sealed class VRLyricsRuntimeHost : IAsyncDisposable
 
     public async Task StartAsync()
     {
-        // Ensure vrlyrics.vrmanifest file exists on disk right away
-        Overlay.QueryManifestStatus(Settings.Current.AutoStartWithSteamVr);
+        // Immediately synchronize vrlyrics.vrmanifest, appconfig.json and vrlyrics.overlay.app.vrappconfig on disk
+        Overlay.RegisterManifest(Settings.Current.AutoStartWithSteamVr);
 
         // Start VR overlay & desktop preview loop immediately without waiting on external services
         Overlay.Start();

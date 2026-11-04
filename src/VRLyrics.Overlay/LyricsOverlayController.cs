@@ -56,6 +56,12 @@ public sealed class LyricsOverlayController : IAsyncDisposable
         remove => _vrService.QuitRequested -= value;
     }
 
+    public event Action? VrElevationRequired
+    {
+        add => _vrService.ElevationRequired += value;
+        remove => _vrService.ElevationRequired -= value;
+    }
+
     /// <summary>
     /// Raised when the user finishes dragging the world-locked overlay with a VR controller
     /// so the updated 3D pose can be persisted to <c>settings.json</c>.

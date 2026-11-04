@@ -67,6 +67,65 @@ public class SteamVrManifestAndProviderTests
     }
 
     [Fact]
+    public void SyncSteamVrConfigFilesDirectly_WritesAppConfigAndVrAppConfigFiles()
+    {
+        var tempRoot = Path.Combine(Path.GetTempPath(), "VRLyrics_SteamVrCfgTest_" + Guid.NewGuid().ToString("N"));
+        var appDir = Path.Combine(tempRoot, "dist", "VRLyrics-win-x64");
+        var cfgDir = Path.Combine(tempRoot, "steam_config");
+        try
+        {
+            Directory.CreateDirectory(appDir);
+            Directory.CreateDirectory(cfgDir);
+
+            var fakeExe = Path.Combine(appDir, "VRLyrics.exe");
+            File.WriteAllText(fakeExe, "stub");
+            var manifestPath = SteamVrManifestService.EnsureManifestFile(appDir, fakeExe);
+
+            // Simulate an existing appconfig.json with another overlay app
+            var appConfigPath = Path.Combine(cfgDir, "appconfig.json");
+            File.WriteAllText(appConfigPath, """
+            {
+               "manifest_paths" : [
+                  "D:\\OtherApp\\other.vrmanifest"
+               ]
+            }
+            """);
+
+            var (syncedInstalled, syncedAutoLaunch, effectivePath) = SteamVrManifestService.SyncSteamVrConfigFilesDirectly(
+                manifestPath,
+                registerManifest: true,
+                enableAutoStart: true,
+                customConfigDirectory: cfgDir);
+            Assert.True(syncedInstalled);
+            Assert.True(syncedAutoLaunch);
+            Assert.Equal(manifestPath, effectivePath);
+
+            var vrAppConfigPath = Path.Combine(cfgDir, "vrappconfig", $"{SteamVrManifestService.AppKey}.vrappconfig");
+            Assert.True(File.Exists(vrAppConfigPath));
+
+            var (installed, autoLaunch, registeredPath) = SteamVrManifestService.QuerySteamVrConfigFilesDirectly(cfgDir);
+            Assert.True(installed);
+            Assert.True(autoLaunch);
+            Assert.Equal(manifestPath, registeredPath);
+
+            // Verify disabling autoStart updates vrappconfig to autolaunch=false while preserving other manifests
+            SteamVrManifestService.SyncSteamVrConfigFilesDirectly(
+                manifestPath,
+                registerManifest: true,
+                enableAutoStart: false,
+                customConfigDirectory: cfgDir);
+            var (installedAfterDisable, autoLaunchAfterDisable, _) = SteamVrManifestService.QuerySteamVrConfigFilesDirectly(cfgDir);
+            Assert.True(installedAfterDisable);
+            Assert.False(autoLaunchAfterDisable);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+                Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
+    [Fact]
     public void PerTrackOffsetsMs_CombinesWithGlobalOffsetInEffectivePosition()
     {
         var trackA = new TrackInfo("晴天", "周杰伦");

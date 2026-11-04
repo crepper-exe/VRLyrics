@@ -15,8 +15,9 @@ public sealed record SteamVrManifestStatus(
     string StatusMessage);
 
 /// <summary>
-/// Generates the <c>vrlyrics.vrmanifest</c> file and interacts with <c>IVRApplications</c> to register
-/// VRLyrics with SteamVR and configure automatic startup when SteamVR launches.
+/// Generates the <c>vrlyrics.vrmanifest</c> file and interacts with both <c>IVRApplications</c> (when SteamVR is running)
+/// and SteamVR's on-disk configuration (<c>appconfig.json</c> and <c>vrappconfig/vrlyrics.overlay.app.vrappconfig</c>
+/// resolved via <c>%LocalAppData%\openvr\openvrpaths.vrpath</c>) so auto-launch works reliably even when configured offline.
 /// </summary>
 public static class SteamVrManifestService
 {
@@ -68,6 +69,7 @@ public static class SteamVrManifestService
             ["launch_type"] = "binary",
             ["binary_path_windows"] = executablePath,
             ["arguments"] = launchArguments,
+            ["arguments_windows"] = launchArguments,
             ["is_dashboard_overlay"] = true,
         };
 
@@ -99,7 +101,7 @@ public static class SteamVrManifestService
 
     /// <summary>
     /// Writes <c>vrlyrics.vrmanifest</c> (and <c>dashboard_thumb.png</c>) to disk and returns the manifest's full path.
-    /// Prefers writing next to <c>VRLyrics.App.exe</c>; falls back to <c>%LocalAppData%\VRLyrics</c> if read-only.
+    /// Prefers writing next to <c>VRLyrics.exe</c>; falls back to <c>%LocalAppData%\VRLyrics</c> if read-only.
     /// </summary>
     public static string EnsureManifestFile(
         string? targetDirectory = null,
@@ -145,20 +147,255 @@ public static class SteamVrManifestService
     }
 
     /// <summary>
+    /// Resolves SteamVR's <c>config</c> directory (e.g., <c>D:\steam\config</c>) from <c>%LocalAppData%\openvr\openvrpaths.vrpath</c>.
+    /// </summary>
+    public static string? TryGetSteamVrConfigDirectory(string? customConfigDirectory = null)
+    {
+        if (!string.IsNullOrWhiteSpace(customConfigDirectory))
+        {
+            try
+            {
+                Directory.CreateDirectory(customConfigDirectory);
+                return Path.GetFullPath(customConfigDirectory);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        try
+        {
+            var vrpathFile = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "openvr",
+                "openvrpaths.vrpath");
+
+            if (!File.Exists(vrpathFile))
+                return null;
+
+            var node = JsonNode.Parse(File.ReadAllText(vrpathFile));
+            var configArr = node?["config"] as JsonArray;
+            if (configArr is null || configArr.Count == 0)
+                return null;
+
+            foreach (var item in configArr)
+            {
+                var raw = item?.GetValue<string>();
+                if (!string.IsNullOrWhiteSpace(raw) && Directory.Exists(raw))
+                    return Path.GetFullPath(raw);
+            }
+        }
+        catch { }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Directly synchronizes <c>appconfig.json</c> and <c>vrappconfig/vrlyrics.overlay.app.vrappconfig</c>
+    /// inside SteamVR's config folder so that SteamVR auto-launch works even if configured while SteamVR is closed.
+    /// </summary>
+    public static (bool IsInstalled, bool IsAutoLaunch, string EffectiveManifestPath) SyncSteamVrConfigFilesDirectly(
+        string manifestPath,
+        bool registerManifest,
+        bool enableAutoStart,
+        string? customConfigDirectory = null)
+    {
+        var fullManifest = Path.GetFullPath(manifestPath);
+        var configDir = TryGetSteamVrConfigDirectory(customConfigDirectory);
+        if (string.IsNullOrWhiteSpace(configDir))
+            return (false, false, fullManifest);
+
+        try
+        {
+            var appConfigPath = Path.Combine(configDir, "appconfig.json");
+            JsonObject rootObj;
+            if (File.Exists(appConfigPath))
+            {
+                try
+                {
+                    rootObj = JsonNode.Parse(File.ReadAllText(appConfigPath)) as JsonObject ?? new JsonObject();
+                }
+                catch
+                {
+                    rootObj = new JsonObject();
+                }
+            }
+            else
+            {
+                rootObj = new JsonObject();
+            }
+
+            if (rootObj["manifest_paths"] is not JsonArray pathsArray)
+            {
+                pathsArray = new JsonArray();
+                rootObj["manifest_paths"] = pathsArray;
+            }
+
+            // If we are running from a transient dev/test build (\bin\Debug\ or \bin\Release\) and appconfig.json
+            // already points to a published dist\...\vrlyrics.vrmanifest that exists on disk, preserve the dist path.
+            var isTransientBuildPath = customConfigDirectory is null &&
+                (fullManifest.Contains(@"\bin\Debug\", StringComparison.OrdinalIgnoreCase) ||
+                 fullManifest.Contains(@"\bin\Release\", StringComparison.OrdinalIgnoreCase));
+
+            string? existingDistManifest = null;
+            for (var i = pathsArray.Count - 1; i >= 0; i--)
+            {
+                var p = pathsArray[i]?.GetValue<string>();
+                if (string.IsNullOrWhiteSpace(p)) continue;
+
+                if (Path.GetFileName(p).Equals(ManifestFileName, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (isTransientBuildPath &&
+                        File.Exists(p) &&
+                        !p.Contains(@"\bin\Debug\", StringComparison.OrdinalIgnoreCase) &&
+                        !p.Contains(@"\bin\Release\", StringComparison.OrdinalIgnoreCase))
+                    {
+                        existingDistManifest = Path.GetFullPath(p);
+                    }
+                    pathsArray.RemoveAt(i);
+                }
+            }
+
+            var targetManifestToRegister = existingDistManifest ?? fullManifest;
+            if (registerManifest)
+            {
+                pathsArray.Add(targetManifestToRegister);
+            }
+
+            File.WriteAllText(
+                appConfigPath,
+                rootObj.ToJsonString(PrettyJson),
+                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+
+            // Write vrappconfig/vrlyrics.overlay.app.vrappconfig
+            var vrAppConfigDir = Path.Combine(configDir, "vrappconfig");
+            Directory.CreateDirectory(vrAppConfigDir);
+            var vrAppConfigPath = Path.Combine(vrAppConfigDir, $"{AppKey}.vrappconfig");
+
+            var lastLaunchTime = "0";
+            if (File.Exists(vrAppConfigPath))
+            {
+                try
+                {
+                    var existingCfg = JsonNode.Parse(File.ReadAllText(vrAppConfigPath)) as JsonObject;
+                    if (existingCfg?["last_launch_time"]?.GetValue<string>() is { } lt && !string.IsNullOrWhiteSpace(lt))
+                        lastLaunchTime = lt;
+                }
+                catch { }
+            }
+
+            var autoLaunchVal = registerManifest && enableAutoStart;
+            var vrAppCfgObj = new JsonObject
+            {
+                ["autolaunch"] = autoLaunchVal,
+                ["last_launch_time"] = lastLaunchTime
+            };
+
+            File.WriteAllText(
+                vrAppConfigPath,
+                vrAppCfgObj.ToJsonString(PrettyJson),
+                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+
+            return (registerManifest, autoLaunchVal, targetManifestToRegister);
+        }
+        catch
+        {
+            return (false, false, fullManifest);
+        }
+    }
+
+    /// <summary>
+    /// Reads the current installation and auto-launch state directly from SteamVR's config files on disk.
+    /// </summary>
+    public static (bool IsInstalled, bool IsAutoLaunch, string? RegisteredManifestPath) QuerySteamVrConfigFilesDirectly(
+        string? customConfigDirectory = null)
+    {
+        var configDir = TryGetSteamVrConfigDirectory(customConfigDirectory);
+        if (string.IsNullOrWhiteSpace(configDir))
+            return (false, false, null);
+
+        try
+        {
+            var appConfigPath = Path.Combine(configDir, "appconfig.json");
+            string? registeredManifest = null;
+            if (File.Exists(appConfigPath))
+            {
+                var rootObj = JsonNode.Parse(File.ReadAllText(appConfigPath)) as JsonObject;
+                if (rootObj?["manifest_paths"] is JsonArray arr)
+                {
+                    foreach (var item in arr)
+                    {
+                        var p = item?.GetValue<string>();
+                        if (!string.IsNullOrWhiteSpace(p) &&
+                            Path.GetFileName(p).Equals(ManifestFileName, StringComparison.OrdinalIgnoreCase) &&
+                            File.Exists(p))
+                        {
+                            registeredManifest = Path.GetFullPath(p);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            var vrAppConfigPath = Path.Combine(configDir, "vrappconfig", $"{AppKey}.vrappconfig");
+            var autoLaunch = false;
+            if (File.Exists(vrAppConfigPath))
+            {
+                var cfgObj = JsonNode.Parse(File.ReadAllText(vrAppConfigPath)) as JsonObject;
+                if (cfgObj?["autolaunch"] is JsonValue val && val.TryGetValue<bool>(out var b))
+                    autoLaunch = b;
+            }
+
+            return (registeredManifest is not null, registeredManifest is not null && autoLaunch, registeredManifest);
+        }
+        catch
+        {
+            return (false, false, null);
+        }
+    }
+
+    /// <summary>
     /// Registers the manifest with SteamVR, identifies the running process, and applies <paramref name="enableAutoStart"/>.
-    /// Requires OpenVR to be initialized (<c>Valve.VR.OpenVR.Applications</c> non-null).
+    /// Synchronizes both <c>IVRApplications</c> (if SteamVR is connected) and SteamVR's on-disk <c>appconfig.json</c> + <c>.vrappconfig</c>.
     /// </summary>
     public static SteamVrManifestStatus ApplyRegistration(
         CVRApplications? applications,
         bool enableAutoStart,
         string? targetDirectory = null,
-        string? customExecutablePath = null)
+        string? customExecutablePath = null,
+        string? customSteamVrConfigDirectory = null)
     {
         var exePath = ResolveExecutablePath(customExecutablePath);
         var manifestPath = EnsureManifestFile(targetDirectory, exePath);
 
+        // Only sync the global SteamVR config directory when not running an isolated temp-dir unit test
+        // (unless customSteamVrConfigDirectory is explicitly passed).
+        var shouldSyncDiskConfig = targetDirectory is null || customSteamVrConfigDirectory is not null;
+
         if (applications is null)
         {
+            if (shouldSyncDiskConfig)
+            {
+                var (diskInstalled, diskAuto, effectivePath) = SyncSteamVrConfigFilesDirectly(
+                    manifestPath,
+                    registerManifest: true,
+                    enableAutoStart: enableAutoStart,
+                    customConfigDirectory: customSteamVrConfigDirectory);
+
+                if (diskInstalled)
+                {
+                    return new SteamVrManifestStatus(
+                        IsInstalled: true,
+                        IsAutoLaunchEnabled: diskAuto,
+                        ManifestPath: effectivePath,
+                        ExecutablePath: exePath,
+                        StatusMessage: diskAuto
+                            ? "已写入 SteamVR 启动配置（随 SteamVR 自动启动：已开启）"
+                            : "已写入 SteamVR 启动配置（随 SteamVR 自动启动：已关闭）");
+                }
+            }
+
             return new SteamVrManifestStatus(
                 IsInstalled: false,
                 IsAutoLaunchEnabled: enableAutoStart,
@@ -170,6 +407,15 @@ public static class SteamVrManifestService
         var addErr = applications.AddApplicationManifest(manifestPath, bTemporary: false);
         if (addErr != EVRApplicationError.None)
         {
+            if (shouldSyncDiskConfig)
+            {
+                SyncSteamVrConfigFilesDirectly(
+                    manifestPath,
+                    registerManifest: true,
+                    enableAutoStart: enableAutoStart,
+                    customConfigDirectory: customSteamVrConfigDirectory);
+            }
+
             return new SteamVrManifestStatus(
                 IsInstalled: applications.IsApplicationInstalled(AppKey),
                 IsAutoLaunchEnabled: applications.GetApplicationAutoLaunch(AppKey),
@@ -188,7 +434,21 @@ public static class SteamVrManifestService
         var installed = applications.IsApplicationInstalled(AppKey);
         var autoLaunch = applications.GetApplicationAutoLaunch(AppKey);
 
-        var msg = autoErr == EVRApplicationError.None
+        if (shouldSyncDiskConfig)
+        {
+            var (diskInstalled, diskAuto, effectivePath) = SyncSteamVrConfigFilesDirectly(
+                manifestPath,
+                registerManifest: true,
+                enableAutoStart: enableAutoStart,
+                customConfigDirectory: customSteamVrConfigDirectory);
+
+            installed |= diskInstalled;
+            if (enableAutoStart)
+                autoLaunch |= diskAuto;
+            manifestPath = effectivePath;
+        }
+
+        var msg = autoErr == EVRApplicationError.None || autoLaunch == enableAutoStart
             ? (autoLaunch ? "已注册到 SteamVR 并开启随 SteamVR 自动启动" : "已注册到 SteamVR（随 SteamVR 自动启动：已关闭）")
             : $"已注册 vrmanifest，但设置自启动返回: {autoErr}";
 
@@ -206,10 +466,21 @@ public static class SteamVrManifestService
     public static SteamVrManifestStatus Unregister(
         CVRApplications? applications,
         string? targetDirectory = null,
-        string? customExecutablePath = null)
+        string? customExecutablePath = null,
+        string? customSteamVrConfigDirectory = null)
     {
         var exePath = ResolveExecutablePath(customExecutablePath);
         var manifestPath = EnsureManifestFile(targetDirectory, exePath);
+        var shouldSyncDiskConfig = targetDirectory is null || customSteamVrConfigDirectory is not null;
+
+        if (shouldSyncDiskConfig)
+        {
+            SyncSteamVrConfigFilesDirectly(
+                manifestPath,
+                registerManifest: false,
+                enableAutoStart: false,
+                customConfigDirectory: customSteamVrConfigDirectory);
+        }
 
         if (applications is null)
         {
@@ -218,7 +489,7 @@ public static class SteamVrManifestService
                 IsAutoLaunchEnabled: false,
                 ManifestPath: manifestPath,
                 ExecutablePath: exePath,
-                StatusMessage: "当前未连接 SteamVR，已关闭本地自启动配置");
+                StatusMessage: "已从 SteamVR 配置移除应用清单并关闭自动启动");
         }
 
         try { applications.SetApplicationAutoLaunch(AppKey, false); } catch { }
@@ -237,18 +508,36 @@ public static class SteamVrManifestService
             StatusMessage: msg);
     }
 
-    /// <summary>Queries the current installation and auto-launch state from SteamVR.</summary>
+    /// <summary>Queries the current installation and auto-launch state from SteamVR or its on-disk config.</summary>
     public static SteamVrManifestStatus QueryStatus(
         CVRApplications? applications,
         bool configuredAutoStart,
         string? targetDirectory = null,
-        string? customExecutablePath = null)
+        string? customExecutablePath = null,
+        string? customSteamVrConfigDirectory = null)
     {
         var exePath = ResolveExecutablePath(customExecutablePath);
         var manifestPath = EnsureManifestFile(targetDirectory, exePath);
+        var shouldCheckDiskConfig = targetDirectory is null || customSteamVrConfigDirectory is not null;
 
         if (applications is null)
         {
+            if (shouldCheckDiskConfig)
+            {
+                var (diskInstalled, diskAuto, registeredPath) = QuerySteamVrConfigFilesDirectly(customSteamVrConfigDirectory);
+                if (diskInstalled)
+                {
+                    return new SteamVrManifestStatus(
+                        IsInstalled: true,
+                        IsAutoLaunchEnabled: diskAuto,
+                        ManifestPath: registeredPath ?? manifestPath,
+                        ExecutablePath: exePath,
+                        StatusMessage: diskAuto
+                            ? "SteamVR 配置已就绪 · 随 SteamVR 自动启动已开启"
+                            : "SteamVR 配置已注册 · 随 SteamVR 自动启动未开启");
+                }
+            }
+
             return new SteamVrManifestStatus(
                 IsInstalled: false,
                 IsAutoLaunchEnabled: configuredAutoStart,
