@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <AssemblyName>VRLyrics</AssemblyName>
+    <RootNamespace>VRLyrics.App</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\VRLyrics.Core\VRLyrics.Core.csproj" />
+    <ProjectReference Include="..\VRLyrics.Media\VRLyrics.Media.csproj" />
+    <ProjectReference Include="..\VRLyrics.Providers\VRLyrics.Providers.csproj" />
+    <ProjectReference Include="..\VRLyrics.Overlay\VRLyrics.Overlay.csproj" />
+  </ItemGroup>
+
+</Project>

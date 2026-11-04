@@ -1,0 +1,21 @@
+# Build output
+bin/
+obj/
+dist/
+publish/
+releases/
+TestResults/
+
+# IDE & Editor files
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Logs & Caches
+*.log
+crash.log
+

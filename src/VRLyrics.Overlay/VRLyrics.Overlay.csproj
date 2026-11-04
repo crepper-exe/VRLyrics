@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Suppress harmless warnings coming from Valve's auto-generated openvr_api.cs -->
+    <NoWarn>$(NoWarn);CS0649;CS0169;CS8618;CS8625;CS8600;CS8602;CS8603;CS8604;CS8605;SYSLIB0004</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SkiaSharp" Version="3.119.0" />
+    <PackageReference Include="Vortice.Direct3D11" Version="3.8.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\VRLyrics.Core\VRLyrics.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Native\win-x64\openvr_api.dll" Link="openvr_api.dll" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
