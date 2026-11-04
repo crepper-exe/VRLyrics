@@ -19,6 +19,8 @@
   <ItemGroup>
     <None Include="Native\win-x64\openvr_api.dll" Link="openvr_api.dll" CopyToOutputDirectory="PreserveNewest" />
     <EmbeddedResource Include="..\VRLyrics.App\Assets\logo.png" LogicalName="VRLyrics.Overlay.logo.png" />
+    <EmbeddedResource Include="..\VRLyrics.App\Assets\Fonts\GoogleSans-latin-500.ttf" LogicalName="VRLyrics.Overlay.GoogleSans-Medium.ttf" />
+    <EmbeddedResource Include="..\VRLyrics.App\Assets\Fonts\GoogleSans-latin-700.ttf" LogicalName="VRLyrics.Overlay.GoogleSans-Bold.ttf" />
   </ItemGroup>
 
 </Project>

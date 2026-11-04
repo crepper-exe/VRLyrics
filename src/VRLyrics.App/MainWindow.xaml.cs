@@ -1043,6 +1043,28 @@ public partial class MainWindow : Window
             SaveElementScreenshot(picker.Content as FrameworkElement, System.IO.Path.Combine(dumpDir, "ui_dialog_color_picker.png"));
         picker.Close();
 
+        if (!string.IsNullOrWhiteSpace(dumpDir))
+        {
+            using var dashRenderer = new VRLyrics.Overlay.Dashboard.DashboardPanelRenderer();
+            var dashBmp = dashRenderer.Render(new VRLyrics.Overlay.Dashboard.DashboardRenderState
+            {
+                Frame = new VRLyrics.Overlay.Rendering.LyricsRenderFrame
+                {
+                    Settings = _runtime.Settings.Current,
+                    Track = new VRLyrics.Core.Models.TrackInfo("晴天", "周杰伦", "叶惠美", TimeSpan.FromMinutes(4.5)),
+                    PlaybackPosition = TimeSpan.FromSeconds(78),
+                    IsPlaying = true,
+                    StatusText = "已匹配: NetEase #186016 · 逐字双语歌词"
+                },
+                IsDemoLoopEnabled = _runtime.ForceDemoLoop,
+                CursorX = 400f,
+                CursorY = 210f
+            });
+            using var dashImg = SKImage.FromBitmap(dashBmp);
+            using var dashData = dashImg.Encode(SKEncodedImageFormat.Png, 100);
+            File.WriteAllBytes(System.IO.Path.Combine(dumpDir, "ui_dashboard_panel.png"), dashData.ToArray());
+        }
+
         _runtime.ForceDemoLoop = prevDemo;
         NavPlacement.IsChecked = true;
         UpdateLayout();
