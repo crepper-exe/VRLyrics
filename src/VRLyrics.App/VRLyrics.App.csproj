@@ -10,7 +10,13 @@
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <AssemblyName>VRLyrics</AssemblyName>
     <RootNamespace>VRLyrics.App</RootNamespace>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\app.ico" />
+    <Resource Include="Assets\logo.png" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\VRLyrics.Core\VRLyrics.Core.csproj" />

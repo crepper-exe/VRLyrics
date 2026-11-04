@@ -78,7 +78,7 @@ public sealed class SteamVrDashboardPanel : IDisposable
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                     "VRLyrics");
                 Directory.CreateDirectory(thumbDir);
-                var thumbPath = Path.Combine(thumbDir, "dashboard_thumb.png");
+                var thumbPath = Path.Combine(thumbDir, "dashboard_icon.png");
                 File.WriteAllBytes(thumbPath, DashboardPanelRenderer.RenderThumbnailPng());
                 overlay.SetOverlayFromFile(_thumbnailHandle, thumbPath);
             }

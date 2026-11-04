@@ -138,32 +138,44 @@ public sealed class DashboardPanelRenderer : IDisposable
         using var canvas = new SKCanvas(bmp);
         canvas.Clear(SKColors.Transparent);
 
-        using var bgShader = SKShader.CreateLinearGradient(
-            new SKPoint(0, 0),
-            new SKPoint(128, 128),
-            [new SKColor(18, 30, 54), new SKColor(9, 14, 26)],
-            null,
-            SKShaderTileMode.Clamp);
-        using var bgPaint = new SKPaint { IsAntialias = true, Style = SKPaintStyle.Fill, Shader = bgShader };
-        using var borderPaint = new SKPaint
+        var drewLogo = false;
+        try
         {
-            IsAntialias = true,
-            Style = SKPaintStyle.Stroke,
-            StrokeWidth = 4f,
-            Color = new SKColor(56, 189, 248)
-        };
+            using var stream = typeof(DashboardPanelRenderer).Assembly.GetManifestResourceStream("VRLyrics.Overlay.logo.png");
+            if (stream is not null)
+            {
+                using var logoBmp = SKBitmap.Decode(stream);
+                if (logoBmp is not null)
+                {
+                    // Tight bounds of the speech bubble inside the 1024x576 source PNG: X=4..1018 (1015), Y=74..501 (428)
+                    var srcRect = new SKRect(4f, 74f, 1019f, 502f);
+                    const float pad = 3f;
+                    var avail = 128f - pad * 2f;
+                    var scale = Math.Min(avail / srcRect.Width, avail / srcRect.Height);
+                    var drawW = srcRect.Width * scale;
+                    var drawH = srcRect.Height * scale;
+                    var drawX = (128f - drawW) * 0.5f;
+                    var drawY = (128f - drawH) * 0.5f;
+                    var dstRect = new SKRect(drawX, drawY, drawX + drawW, drawY + drawH);
 
-        var rect = new SKRect(6, 6, 122, 122);
-        canvas.DrawRoundRect(rect, 28f, 28f, bgPaint);
-        canvas.DrawRoundRect(rect, 28f, 28f, borderPaint);
+                    using var imgFromLogo = SKImage.FromBitmap(logoBmp);
+                    using var logoPaint = new SKPaint { IsAntialias = true };
+                    canvas.DrawImage(imgFromLogo, srcRect, dstRect, new SKSamplingOptions(SKCubicResampler.Mitchell), logoPaint);
+                    drewLogo = true;
+                }
+            }
+        }
+        catch { }
 
-        using var sungPaint = new SKPaint { IsAntialias = true, Style = SKPaintStyle.Fill, Color = new SKColor(124, 247, 255) };
-        using var unsungPaint = new SKPaint { IsAntialias = true, Style = SKPaintStyle.Fill, Color = new SKColor(203, 213, 225, 200) };
+        if (!drewLogo)
+        {
+            using var sungPaint = new SKPaint { IsAntialias = true, Style = SKPaintStyle.Fill, Color = new SKColor(124, 247, 255) };
+            using var unsungPaint = new SKPaint { IsAntialias = true, Style = SKPaintStyle.Fill, Color = new SKColor(203, 213, 225, 200) };
 
-        // Karaoke bars
-        canvas.DrawRoundRect(new SKRect(24, 42, 76, 58), 6f, 6f, sungPaint);
-        canvas.DrawRoundRect(new SKRect(80, 42, 104, 58), 6f, 6f, unsungPaint);
-        canvas.DrawRoundRect(new SKRect(32, 72, 96, 84), 5f, 5f, unsungPaint);
+            canvas.DrawRoundRect(new SKRect(24, 42, 76, 58), 6f, 6f, sungPaint);
+            canvas.DrawRoundRect(new SKRect(80, 42, 104, 58), 6f, 6f, unsungPaint);
+            canvas.DrawRoundRect(new SKRect(32, 72, 96, 84), 5f, 5f, unsungPaint);
+        }
 
         canvas.Flush();
         using var img = SKImage.FromBitmap(bmp);

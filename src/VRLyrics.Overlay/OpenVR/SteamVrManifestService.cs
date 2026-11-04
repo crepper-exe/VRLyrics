@@ -131,8 +131,7 @@ public static class SteamVrManifestService
         var iconPath = Path.Combine(dir, "dashboard_thumb.png");
         try
         {
-            if (!File.Exists(iconPath))
-                File.WriteAllBytes(iconPath, DashboardPanelRenderer.RenderThumbnailPng());
+            File.WriteAllBytes(iconPath, DashboardPanelRenderer.RenderThumbnailPng());
         }
         catch
         {

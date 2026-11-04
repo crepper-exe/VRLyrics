@@ -82,13 +82,7 @@ public partial class App : System.Windows.Application
             _mainWindow = new MainWindow(
                 _runtime,
                 onMinimizeToTray: () => _trayIcon.ShowMinimizedHintOnce(),
-                onRequestExit: ExitApplication)
-            {
-                Icon = Imaging.CreateBitmapSourceFromHIcon(
-                    _trayIcon.AppIcon.Handle,
-                    Int32Rect.Empty,
-                    BitmapSizeOptions.FromEmptyOptions())
-            };
+                onRequestExit: ExitApplication);
 
             var startMinimized = e.Args.Any(a =>
                 string.Equals(a, "--minimized", StringComparison.OrdinalIgnoreCase) ||

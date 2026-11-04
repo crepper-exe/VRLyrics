@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using VRLyrics.Core.Models;
@@ -195,6 +196,31 @@ public sealed class TrayIconService : IDisposable
 
     private static (Icon Icon, nint HIcon) CreateVrLyricsIcon()
     {
+        try
+        {
+            var uri = new Uri("pack://application:,,,/Assets/app.ico", UriKind.Absolute);
+            var streamInfo = System.Windows.Application.GetResourceStream(uri);
+            if (streamInfo?.Stream is { } s)
+            {
+                using (s)
+                {
+                    return (new Icon(s, new Size(32, 32)), 0);
+                }
+            }
+        }
+        catch { }
+
+        try
+        {
+            if (Environment.ProcessPath is { Length: > 0 } exePath &&
+                File.Exists(exePath) &&
+                Icon.ExtractAssociatedIcon(exePath) is { } assocIcon)
+            {
+                return (assocIcon, 0);
+            }
+        }
+        catch { }
+
         using var bmp = new Bitmap(64, 64);
         using (var g = Graphics.FromImage(bmp))
         {

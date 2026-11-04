@@ -6,6 +6,13 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $appProj = Join-Path $repoRoot "src\VRLyrics.App\VRLyrics.App.csproj"
 
+$running = Get-Process -Name "VRLyrics" -ErrorAction SilentlyContinue
+if ($running) {
+    Write-Host "==> 检测到正在运行的 VRLyrics.exe，正在自动停止以更新可执行文件..." -ForegroundColor Yellow
+    $running | Stop-Process -Force
+    Start-Sleep -Milliseconds 500
+}
+
 if ($SelfContained) {
     $outDir = Join-Path $repoRoot "dist\VRLyrics-win-x64-selfcontained"
     Write-Host "==> 正在构建 VRLyrics 独立自包含单文件版 (免装 .NET 运行时)..." -ForegroundColor Cyan
@@ -28,6 +35,10 @@ else {
         -p:PublishSingleFile=true `
         -p:DebugType=embedded `
         -o $outDir
+}
+
+if ($LASTEXITCODE -ne 0) {
+    throw "dotnet publish 失败 (ExitCode: $LASTEXITCODE)"
 }
 
 Write-Host "`n✅ 发布成功！输出目录：$outDir" -ForegroundColor Green
