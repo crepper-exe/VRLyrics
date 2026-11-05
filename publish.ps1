@@ -28,6 +28,7 @@ if ($SelfContained) {
         --self-contained true `
         -p:PublishSingleFile=true `
         -p:IncludeNativeLibrariesForSelfExtract=true `
+        -p:EnableCompressionInSingleFile=true `
         -p:DebugType=embedded `
         -o $outDir
 }
