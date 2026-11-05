@@ -1,4 +1,4 @@
-param(
+﻿param(
     [switch]$SelfContained = $false
 )
 
@@ -54,5 +54,5 @@ if ($LASTEXITCODE -ne 0) {
     throw "dotnet publish 失败 (ExitCode: $LASTEXITCODE)"
 }
 
-Write-Host "`n✅ 发布成功！输出目录：$outDir" -ForegroundColor Green
+Write-Host "`n[OK] 发布成功！输出目录：$outDir" -ForegroundColor Green
 Get-ChildItem $outDir | Select-Object Name, @{Name="Size(KB)";Expression={[math]::Round($_.Length / 1KB, 1)}} | Format-Table -AutoSize
