@@ -501,7 +501,7 @@
                                     </StackPanel>
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                                         <Button Content="手柄正上方" Style="{StaticResource ActionButtonStyle}" Padding="12,6" Margin="0,0,8,0" Tag="AboveController" Click="OnHandPresetClick" />
-                                        <Button Content="手腕内侧 (看表)" Style="{StaticResource ActionButtonStyle}" Padding="12,6" Margin="0,0,8,0" Tag="InnerWrist" Click="OnHandPresetClick" />
+                                        <Button Content="手腕内侧" Style="{StaticResource ActionButtonStyle}" Padding="12,6" Margin="0,0,8,0" Tag="InnerWrist" Click="OnHandPresetClick" />
                                         <Button Content="手背外侧" Style="{StaticResource ActionButtonStyle}" Padding="12,6" Tag="OuterWrist" Click="OnHandPresetClick" />
                                     </StackPanel>
                                 </DockPanel>

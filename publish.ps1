@@ -9,8 +9,14 @@ $appProj = Join-Path $repoRoot "src\VRLyrics.App\VRLyrics.App.csproj"
 $running = Get-Process -Name "VRLyrics" -ErrorAction SilentlyContinue
 if ($running) {
     Write-Host "==> 检测到正在运行的 VRLyrics.exe，正在自动停止以更新可执行文件..." -ForegroundColor Yellow
-    $running | Stop-Process -Force
-    Start-Sleep -Milliseconds 500
+    try {
+        $evt = [System.Threading.EventWaitHandle]::OpenExisting("Local\VRLyrics_YieldToElevated_Event")
+        $evt.Set()
+        $evt.Dispose()
+        Start-Sleep -Milliseconds 600
+    } catch {}
+    Get-Process -Name "VRLyrics" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Milliseconds 400
 }
 
 if ($SelfContained) {
@@ -27,6 +33,12 @@ if ($SelfContained) {
 }
 else {
     $outDir = Join-Path $repoRoot "dist\VRLyrics-win-x64"
+    $lockedExe = Join-Path $outDir "VRLyrics.exe"
+    $oldExe = Join-Path $outDir "VRLyrics.exe.old"
+    Remove-Item $oldExe -Force -ErrorAction SilentlyContinue
+    if ((Get-Process -Name "VRLyrics" -ErrorAction SilentlyContinue) -and (Test-Path $lockedExe)) {
+        Move-Item $lockedExe $oldExe -Force -ErrorAction SilentlyContinue
+    }
     Write-Host "==> 正在构建 VRLyrics 轻量单文件便携版 (依赖系统 .NET 10 Desktop Runtime)..." -ForegroundColor Cyan
     dotnet publish $appProj `
         -c Release `

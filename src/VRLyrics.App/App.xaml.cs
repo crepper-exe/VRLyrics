@@ -104,11 +104,8 @@ public partial class App : System.Windows.Application
                 _activateEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ActivateWindowEventName);
                 _ = Task.Run(ListenForActivationSignal);
 
-                if (!Environment.IsPrivilegedProcess)
-                {
-                    _yieldToElevatedEvent = new EventWaitHandle(false, EventResetMode.AutoReset, YieldToElevatedEventName);
-                    _ = Task.Run(ListenForYieldToElevatedSignal);
-                }
+                _yieldToElevatedEvent = new EventWaitHandle(false, EventResetMode.AutoReset, YieldToElevatedEventName);
+                _ = Task.Run(ListenForYieldToElevatedSignal);
             }
 
             _runtime = new VRLyricsRuntimeHost();
