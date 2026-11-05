@@ -173,21 +173,12 @@ public sealed class DashboardPanelRenderer : IDisposable
             _canvas.DrawRoundRect(outerRect, 22f, 22f, borderPaint);
         }
 
-        // 2. Top Header Card
+        // 2. Top Header (directly on panel surface without an enclosing rounded rectangle card)
         DrawHeader(_canvas, state);
 
         // 3. Section Cards & Titles (Spacious layout with 16px gaps)
         DrawSectionCard(_canvas, new SKRect(28, 134, PanelWidth - 28, 336), "显示与空间锚定",
             $"物理宽度 {s.WidthInMeters:0.00} m   ·   不透明度 {s.Opacity * 100:0}%   ·   曲面 {s.Curvature * 100:0}%");
-
-        // Inset segmented track container for the 4 attachment modes
-        var modeTrackRect = new SKRect(44, 180, PanelWidth - 44, 246);
-        using (var trackFill = new SKPaint { IsAntialias = true, Style = SKPaintStyle.Fill, Color = ColorInset })
-        using (var trackStroke = new SKPaint { IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 1f, Color = ColorBorder })
-        {
-            _canvas.DrawRoundRect(modeTrackRect, 11f, 11f, trackFill);
-            _canvas.DrawRoundRect(modeTrackRect, 11f, 11f, trackStroke);
-        }
 
         DrawSectionCard(_canvas, new SKRect(28, 352, 592, 532), "时间轴偏移微调",
             $"全局偏移 {s.GlobalOffsetMs:+0;-0;0} ms ({s.GlobalOffsetMs / 1000.0:+0.00;-0.00;0.00}s)");
@@ -298,10 +289,10 @@ public sealed class DashboardPanelRenderer : IDisposable
         _buttons.Clear();
         _sliders.Clear();
 
-        // --- Header right toggle switches (Y: 36..106) ---
+        // --- Header right toggle switches (Y: 32..104, right-aligned to section card edge X=1172) ---
         _buttons.Add(new DashboardButtonItem(
             DashboardAction.ToggleEnabled,
-            new SKRect(740, 36, 946, 106),
+            new SKRect(738, 32, 948, 104),
             "显示 VR 歌词",
             s.Enabled ? "已开启" : "已隐藏",
             IsSelected: s.Enabled,
@@ -309,59 +300,59 @@ public sealed class DashboardPanelRenderer : IDisposable
 
         _buttons.Add(new DashboardButtonItem(
             DashboardAction.ToggleDemoLoop,
-            new SKRect(960, 36, 1154, 106),
+            new SKRect(962, 32, 1172, 104),
             "样式演示动画",
             isDemoLoop ? "已开启" : "已关闭",
             IsSelected: isDemoLoop));
 
-        // --- Section 1 Row 1: 4 Attachment Modes inside Segmented Track (Y: 185..241) ---
-        var modeY1 = 185f;
-        var modeY2 = 241f;
-        var modeW = 266f;
-        var modeGap = 12f;
-        var modeStartX = 50f;
+        // --- Section 1 Row 1 & Row 2: Unified 4-Column Grid (X: 46..1154, 4 × 265px + 3 × 16px = 1108px) ---
+        const float s1StartX = 46f;
+        const float s1ColW = 265f;
+        const float s1ColGap = 16f;
+        var modeY1 = 182f;
+        var modeY2 = 240f;
 
         _buttons.Add(new DashboardButtonItem(
             DashboardAction.SetModeHead,
-            new SKRect(modeStartX + (modeW + modeGap) * 0, modeY1, modeStartX + modeW + (modeW + modeGap) * 0, modeY2),
+            new SKRect(s1StartX + (s1ColW + s1ColGap) * 0, modeY1, s1StartX + s1ColW + (s1ColW + s1ColGap) * 0, modeY2),
             "头部跟随 (视野下方)",
             IsSelected: s.AttachmentMode == OverlayAttachmentMode.HeadLocked));
 
         _buttons.Add(new DashboardButtonItem(
             DashboardAction.SetModeWorld,
-            new SKRect(modeStartX + (modeW + modeGap) * 1, modeY1, modeStartX + modeW + (modeW + modeGap) * 1, modeY2),
+            new SKRect(s1StartX + (s1ColW + s1ColGap) * 1, modeY1, s1StartX + s1ColW + (s1ColW + s1ColGap) * 1, modeY2),
             "空间固定 (手柄拖拽)",
             IsSelected: s.AttachmentMode == OverlayAttachmentMode.WorldLocked));
 
         _buttons.Add(new DashboardButtonItem(
             DashboardAction.SetModeLeftHand,
-            new SKRect(modeStartX + (modeW + modeGap) * 2, modeY1, modeStartX + modeW + (modeW + modeGap) * 2, modeY2),
+            new SKRect(s1StartX + (s1ColW + s1ColGap) * 2, modeY1, s1StartX + s1ColW + (s1ColW + s1ColGap) * 2, modeY2),
             "左手腕跟随",
             IsSelected: s.AttachmentMode == OverlayAttachmentMode.LeftHand));
 
         _buttons.Add(new DashboardButtonItem(
             DashboardAction.SetModeRightHand,
-            new SKRect(modeStartX + (modeW + modeGap) * 3, modeY1, modeStartX + modeW + (modeW + modeGap) * 3, modeY2),
+            new SKRect(s1StartX + (s1ColW + s1ColGap) * 3, modeY1, s1StartX + s1ColW + (s1ColW + s1ColGap) * 3, modeY2),
             "右手腕跟随",
             IsSelected: s.AttachmentMode == OverlayAttachmentMode.RightHand));
 
-        // --- Section 1 Row 2: Spatial Quick Actions + Mobile-Volume-Style Pill Sliders (Y: 260..318) ---
-        var actY1 = 260f;
-        var actY2 = 318f;
+        // --- Section 1 Row 2: Spatial Quick Actions + Mobile-Volume-Style Pill Sliders (Y: 256..314) ---
+        var actY1 = 256f;
+        var actY2 = 314f;
         _buttons.Add(new DashboardButtonItem(
             DashboardAction.RecenterWorldToHmd,
-            new SKRect(46, actY1, 306, actY2),
+            new SKRect(s1StartX + (s1ColW + s1ColGap) * 0, actY1, s1StartX + s1ColW + (s1ColW + s1ColGap) * 0, actY2),
             "移至当前头显视野正前方",
             IsPrimary: true));
 
         _buttons.Add(new DashboardButtonItem(
             DashboardAction.ToggleWorldControllerGrab,
-            new SKRect(320, actY1, 580, actY2),
+            new SKRect(s1StartX + (s1ColW + s1ColGap) * 1, actY1, s1StartX + s1ColW + (s1ColW + s1ColGap) * 1, actY2),
             s.EnableWorldControllerGrab ? "手柄抓取拖动：已允许" : "手柄抓取拖动：已锁定",
             IsSelected: s.EnableWorldControllerGrab));
 
-        // Pill Slider 1: WidthInMeters (X: 594..867, Y: 260..318)
-        var widthSliderRect = new SKRect(594, actY1, 867, actY2);
+        // Pill Slider 1: WidthInMeters (Col 2: X 608..873, Y 256..314)
+        var widthSliderRect = new SKRect(s1StartX + (s1ColW + s1ColGap) * 2, actY1, s1StartX + s1ColW + (s1ColW + s1ColGap) * 2, actY2);
         var widthRatio = Math.Clamp((s.WidthInMeters - MinWidthMeters) / (MaxWidthMeters - MinWidthMeters), 0f, 1f);
         _sliders.Add(new DashboardSliderItem(
             DashboardSliderKind.Width,
@@ -382,8 +373,8 @@ public sealed class DashboardPanelRenderer : IDisposable
             $"宽度放大 ({s.WidthInMeters:0.00} m)",
             IsSliderSegment: true));
 
-        // Pill Slider 2: Opacity (X: 881..1154, Y: 260..318)
-        var opacitySliderRect = new SKRect(881, actY1, 1154, actY2);
+        // Pill Slider 2: Opacity (Col 3: X 889..1154, Y 256..314)
+        var opacitySliderRect = new SKRect(s1StartX + (s1ColW + s1ColGap) * 3, actY1, s1StartX + s1ColW + (s1ColW + s1ColGap) * 3, actY2);
         var opacityRatio = Math.Clamp((s.Opacity - MinOpacity) / (MaxOpacity - MinOpacity), 0f, 1f);
         _sliders.Add(new DashboardSliderItem(
             DashboardSliderKind.Opacity,
@@ -398,11 +389,11 @@ public sealed class DashboardPanelRenderer : IDisposable
             $"不透明度 {s.Opacity * 100:0}%",
             IsSliderSegment: true));
 
-        // --- Section 2 Left: Timeline Offset (X: 46..574, Y: 416..508) ---
+        // --- Section 2 Left: Timeline Offset (X: 46..574, Y: 416..508, 5 × 96px + 4 × 12px = 528px) ---
         var offY1 = 416f;
         var offY2 = 508f;
-        var offW = 97f;
-        var offGap = 10f;
+        var offW = 96f;
+        var offGap = 12f;
         var offStartX = 46f;
 
         _buttons.Add(new DashboardButtonItem(
@@ -436,10 +427,10 @@ public sealed class DashboardPanelRenderer : IDisposable
             "+500 ms",
             "延后 0.5s"));
 
-        // --- Section 2 Right: Lyrics Provider & Reload (X: 626..1154, Y: 416..508) ---
+        // --- Section 2 Right: Lyrics Provider & Reload (X: 626..1154, Y: 416..508, 6 × 80px + 5 × 9.6px = 528px) ---
         var srcStartX = 626f;
         var srcW = 80f;
-        var srcGap = 9f;
+        var srcGap = 9.6f;
         var pref = s.PreferredLyricsProvider ?? "Auto";
 
         _buttons.Add(new DashboardButtonItem(
@@ -484,11 +475,11 @@ public sealed class DashboardPanelRenderer : IDisposable
             "刷新缓存",
             IsPrimary: true));
 
-        // --- Section 3 Row 1: Content Toggles + Font Size Pill Slider (Y: 600..654) ---
+        // --- Section 3 Row 1: Content Toggles + Font Size Pill Slider (Y: 600..654, 5 × 210px + 4 × 14.5px = 1108px) ---
         var cY1 = 600f;
         var cY2 = 654f;
         var cW = 210f;
-        var cGap = 14f;
+        var cGap = 14.5f;
         var cStartX = 46f;
 
         _buttons.Add(new DashboardButtonItem(
@@ -509,7 +500,7 @@ public sealed class DashboardPanelRenderer : IDisposable
             s.EnableKaraokeHighlight ? "逐字擦除高亮：开启" : "逐字擦除高亮：关闭",
             IsSelected: s.EnableKaraokeHighlight));
 
-        // Pill Slider 3: MainFontSize (X: 718..1154, Y: 600..654)
+        // Pill Slider 3: MainFontSize (Col 3..4: X 719.5..1154, Y 600..654)
         var fontSliderRect = new SKRect(cStartX + (cW + cGap) * 3, cY1, 1154f, cY2);
         var fontRatio = Math.Clamp((s.MainFontSize - MinFontSize) / (MaxFontSize - MinFontSize), 0f, 1f);
         _sliders.Add(new DashboardSliderItem(
@@ -554,14 +545,8 @@ public sealed class DashboardPanelRenderer : IDisposable
 
     private void DrawHeader(SKCanvas canvas, DashboardRenderState state)
     {
-        var headerRect = new SKRect(28, 22, PanelWidth - 28, 120);
-        using var cardPaint = new SKPaint { IsAntialias = true, Style = SKPaintStyle.Fill, Color = ColorCard };
-        using var borderPaint = new SKPaint { IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 1f, Color = ColorBorder };
-        canvas.DrawRoundRect(headerRect, 14f, 14f, cardPaint);
-        canvas.DrawRoundRect(headerRect, 14f, 14f, borderPaint);
-
-        using var titleLatin = new SKFont(_latinBold, 23f);
-        using var titleCjk = new SKFont(_cjkBold, 23f);
+        using var titleLatin = new SKFont(_latinBold, 24f);
+        using var titleCjk = new SKFont(_cjkBold, 24f);
         using var trackLatin = new SKFont(_latinMedium, 17.5f);
         using var trackCjk = new SKFont(_cjkBold, 17.5f);
         using var subLatin = new SKFont(_latinMedium, 13.5f);
@@ -570,21 +555,21 @@ public sealed class DashboardPanelRenderer : IDisposable
         using var text1Paint = new SKPaint { IsAntialias = true, Color = ColorText1 };
         using var text3Paint = new SKPaint { IsAntialias = true, Color = ColorText3 };
 
-        // Brand title & subtitle in Google Sans (no redundant SteamVR connection badge inside VR dashboard)
-        DrawMixedText(canvas, "VRLyrics", 48, 56, SKTextAlign.Left, titleLatin, titleCjk, text1Paint);
-        DrawMixedText(canvas, "SteamVR Lyrics Studio", 160, 55, SKTextAlign.Left, subLatin, subCjk, text3Paint);
+        // Brand title & subtitle directly on the panel background (no enclosing card rectangle)
+        DrawMixedText(canvas, "VRLyrics", 30, 52, SKTextAlign.Left, titleLatin, titleCjk, text1Paint);
+        DrawMixedText(canvas, "SteamVR Lyrics Studio", 146, 51, SKTextAlign.Left, subLatin, subCjk, text3Paint);
 
         var f = state.Frame;
-        DrawPlayPauseIcon(canvas, 48f, 73f, 12f, f.Track is not null && f.IsPlaying, f.Track is not null ? ColorAccent : ColorText3);
+        DrawPlayPauseIcon(canvas, 30f, 70f, 12f, f.Track is not null && f.IsPlaying, f.Track is not null ? ColorAccent : ColorText3);
 
         var trackTitle = f.Track is { } t
             ? $"{t.Title} - {t.Artist}   ({FormatTime(f.PlaybackPosition)} / {FormatTime(t.Duration)})"
             : "当前未检测到正在播放的曲目";
 
-        DrawMixedText(canvas, TruncateText(trackTitle, trackCjk, 640f), 68, 86, SKTextAlign.Left, trackLatin, trackCjk, text1Paint);
+        DrawMixedText(canvas, TruncateText(trackTitle, trackCjk, 660f), 50, 83, SKTextAlign.Left, trackLatin, trackCjk, text1Paint);
 
         var statusStr = !string.IsNullOrWhiteSpace(f.StatusText) ? f.StatusText! : "等待音乐播放…";
-        DrawMixedText(canvas, TruncateText(statusStr, subCjk, 660f), 48, 108, SKTextAlign.Left, subLatin, subCjk, text3Paint);
+        DrawMixedText(canvas, TruncateText(statusStr, subCjk, 680f), 30, 106, SKTextAlign.Left, subLatin, subCjk, text3Paint);
     }
 
     private static void DrawPlayPauseIcon(SKCanvas canvas, float x, float y, float size, bool isPlaying, SKColor color)
@@ -614,7 +599,7 @@ public sealed class DashboardPanelRenderer : IDisposable
     private void DrawPillSlider(SKCanvas canvas, DashboardSliderItem slider, bool isHover, bool isActive)
     {
         var r = slider.Bounds;
-        const float cornerRadius = 11f;
+        const float cornerRadius = 10f;
 
         // 1. Dark inset track background
         using (var trackPaint = new SKPaint
@@ -760,8 +745,8 @@ public sealed class DashboardPanelRenderer : IDisposable
             Color = borderColor
         })
         {
-            canvas.DrawRoundRect(r, 9f, 9f, fillPaint);
-            canvas.DrawRoundRect(r, 9f, 9f, strokePaint);
+            canvas.DrawRoundRect(r, 10f, 10f, fillPaint);
+            canvas.DrawRoundRect(r, 10f, 10f, strokePaint);
         }
 
         // Special layout for header toggle switches (ToggleEnabled / ToggleDemoLoop): draw pill switch on right
