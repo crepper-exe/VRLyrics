@@ -528,9 +528,8 @@ public partial class MainWindow : Window
         LblHandYaw.Text = $"{handYaw:+0.0;-0.0;0.0}°";
         LblHandRoll.Text = $"{handRoll:+0.0;-0.0;0.0}°";
 
-        _runtime.Settings.Update(s => s with
+        _runtime.Settings.Update(s => s.WithWidthForCurrentMode(width) with
         {
-            WidthInMeters = width,
             Opacity = opacity,
             Curvature = curvature,
             HeadOffsetX = hx,
@@ -619,7 +618,6 @@ public partial class MainWindow : Window
         {
             "InnerWrist" => _runtime.Settings.Update(s => s with
             {
-                WidthInMeters = Math.Min(s.WidthInMeters, 0.45f),
                 HandOffsetX = 0.06f * sign,
                 HandOffsetY = -0.02f,
                 HandOffsetZ = 0.09f,
@@ -629,7 +627,6 @@ public partial class MainWindow : Window
             }),
             "OuterWrist" => _runtime.Settings.Update(s => s with
             {
-                WidthInMeters = Math.Min(s.WidthInMeters, 0.50f),
                 HandOffsetX = -0.05f * sign,
                 HandOffsetY = 0.04f,
                 HandOffsetZ = 0.08f,
@@ -655,7 +652,11 @@ public partial class MainWindow : Window
         var def = new LyricsOverlaySettings();
         var updated = _runtime.Settings.Update(s => s with
         {
-            WidthInMeters = def.WidthInMeters,
+            HeadWorldWidthInMeters = def.HeadWorldWidthInMeters,
+            HandWidthInMeters = def.HandWidthInMeters,
+            WidthInMeters = LyricsOverlaySettings.IsHandAttachmentMode(s.AttachmentMode)
+                ? def.HandWidthInMeters
+                : def.HeadWorldWidthInMeters,
             Opacity = def.Opacity,
             Curvature = def.Curvature,
             HeadOffsetX = def.HeadOffsetX,

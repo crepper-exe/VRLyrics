@@ -130,6 +130,42 @@ public class DashboardPanelTests
     }
 
     [Fact]
+    public void WithAttachmentMode_SwitchesBetweenHandAndHeadWorldWidthPresets()
+    {
+        var settings = new LyricsOverlaySettings();
+        Assert.Equal(OverlayAttachmentMode.HeadLocked, settings.AttachmentMode);
+        Assert.Equal(1.00f, settings.WidthInMeters, 2);
+
+        // Switching to LeftHand or RightHand uses 0.45m by default
+        settings = settings.WithAttachmentMode(OverlayAttachmentMode.LeftHand);
+        Assert.Equal(OverlayAttachmentMode.LeftHand, settings.AttachmentMode);
+        Assert.Equal(0.45f, settings.WidthInMeters, 2);
+
+        // Switching back to WorldLocked or HeadLocked restores 1.00m
+        settings = settings.WithAttachmentMode(OverlayAttachmentMode.WorldLocked);
+        Assert.Equal(OverlayAttachmentMode.WorldLocked, settings.AttachmentMode);
+        Assert.Equal(1.00f, settings.WidthInMeters, 2);
+
+        // Customizing width in WorldLocked saves into HeadWorldWidthInMeters (e.g. 1.25m)
+        settings = settings.WithWidthForCurrentMode(1.25f);
+        Assert.Equal(1.25f, settings.WidthInMeters, 2);
+        Assert.Equal(1.25f, settings.HeadWorldWidthInMeters, 2);
+
+        // Switching to RightHand restores hand width (0.45m) and customizing it saves into HandWidthInMeters (e.g. 0.55m)
+        settings = settings.WithAttachmentMode(OverlayAttachmentMode.RightHand);
+        Assert.Equal(0.45f, settings.WidthInMeters, 2);
+        settings = settings.WithWidthForCurrentMode(0.55f);
+        Assert.Equal(0.55f, settings.WidthInMeters, 2);
+        Assert.Equal(0.55f, settings.HandWidthInMeters, 2);
+
+        // Switching back and forth preserves both user-configured presets
+        settings = settings.WithAttachmentMode(OverlayAttachmentMode.HeadLocked);
+        Assert.Equal(1.25f, settings.WidthInMeters, 2);
+        settings = settings.WithAttachmentMode(OverlayAttachmentMode.LeftHand);
+        Assert.Equal(0.55f, settings.WidthInMeters, 2);
+    }
+
+    [Fact]
     public async Task LyricsService_PrioritizesPreferredProvider()
     {
         var track = new TrackInfo("SongB", "ArtistA", "AlbumC", TimeSpan.FromSeconds(200));

@@ -315,7 +315,7 @@ public sealed class DashboardPanelRenderer : IDisposable
         _buttons.Add(new DashboardButtonItem(
             DashboardAction.SetModeHead,
             new SKRect(s1StartX + (s1ColW + s1ColGap) * 0, modeY1, s1StartX + s1ColW + (s1ColW + s1ColGap) * 0, modeY2),
-            "头部跟随 (视野下方)",
+            "头部跟随",
             IsSelected: s.AttachmentMode == OverlayAttachmentMode.HeadLocked));
 
         _buttons.Add(new DashboardButtonItem(

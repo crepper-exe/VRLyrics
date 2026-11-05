@@ -144,10 +144,10 @@ public sealed class VRLyricsRuntimeHost : IAsyncDisposable
         if (mode == OverlayAttachmentMode.WorldLocked && !Overlay.IsSavedWorldPoseInFrontOfHmd(Settings.Current))
         {
             var pose = Overlay.ComputePoseInFrontOfHmd();
-            return Settings.Update(s => pose.ApplyTo(s) with { AttachmentMode = mode });
+            return Settings.Update(s => pose.ApplyTo(s).WithAttachmentMode(mode));
         }
 
-        return Settings.Update(s => s with { AttachmentMode = mode });
+        return Settings.Update(s => s.WithAttachmentMode(mode));
     }
 
     /// <summary>
@@ -156,7 +156,7 @@ public sealed class VRLyricsRuntimeHost : IAsyncDisposable
     public LyricsOverlaySettings RecenterWorldOverlayToHmd(float distanceMeters = 1.25f, float verticalOffsetMeters = -0.20f)
     {
         var pose = Overlay.ComputePoseInFrontOfHmd(distanceMeters, verticalOffsetMeters);
-        return Settings.Update(s => pose.ApplyTo(s) with { AttachmentMode = OverlayAttachmentMode.WorldLocked });
+        return Settings.Update(s => pose.ApplyTo(s).WithAttachmentMode(OverlayAttachmentMode.WorldLocked));
     }
 
     /// <summary>Switches the preferred lyrics provider and immediately re-queries the current track.</summary>
@@ -205,11 +205,11 @@ public sealed class VRLyricsRuntimeHost : IAsyncDisposable
                 break;
 
             case DashboardAction.WidthMinus:
-                Settings.Update(s => s with { WidthInMeters = MathF.Round(Math.Clamp(s.WidthInMeters - 0.10f, 0.25f, 2.40f), 2) });
+                Settings.Update(s => s.WithWidthForCurrentMode(s.WidthInMeters - 0.10f));
                 break;
 
             case DashboardAction.WidthPlus:
-                Settings.Update(s => s with { WidthInMeters = MathF.Round(Math.Clamp(s.WidthInMeters + 0.10f, 0.25f, 2.40f), 2) });
+                Settings.Update(s => s.WithWidthForCurrentMode(s.WidthInMeters + 0.10f));
                 break;
 
             case DashboardAction.CycleOpacity:
@@ -314,7 +314,7 @@ public sealed class VRLyricsRuntimeHost : IAsyncDisposable
                 var width = MathF.Round(
                     DashboardPanelRenderer.MinWidthMeters + t * (DashboardPanelRenderer.MaxWidthMeters - DashboardPanelRenderer.MinWidthMeters),
                     2);
-                Settings.Update(s => s with { WidthInMeters = Math.Clamp(width, DashboardPanelRenderer.MinWidthMeters, DashboardPanelRenderer.MaxWidthMeters) });
+                Settings.Update(s => s.WithWidthForCurrentMode(width));
                 break;
             }
 

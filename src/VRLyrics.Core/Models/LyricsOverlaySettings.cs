@@ -22,13 +22,22 @@ public enum OverlayAttachmentMode
 /// </summary>
 public sealed record LyricsOverlaySettings
 {
+    public const float DefaultHeadWorldWidthMeters = 1.00f;
+    public const float DefaultHandWidthMeters = 0.45f;
+
     public bool Enabled { get; init; } = true;
 
     // --- Placement & physical dimensions ---
     public OverlayAttachmentMode AttachmentMode { get; init; } = OverlayAttachmentMode.HeadLocked;
 
-    /// <summary>Physical width of the overlay quad in meters.</summary>
-    public float WidthInMeters { get; init; } = 0.95f;
+    /// <summary>Physical width of the overlay quad in meters for the currently active attachment mode.</summary>
+    public float WidthInMeters { get; init; } = DefaultHeadWorldWidthMeters;
+
+    /// <summary>User preset width (in meters) used when in <see cref="OverlayAttachmentMode.HeadLocked"/> or <see cref="OverlayAttachmentMode.WorldLocked"/>.</summary>
+    public float HeadWorldWidthInMeters { get; init; } = DefaultHeadWorldWidthMeters;
+
+    /// <summary>User preset width (in meters) used when in <see cref="OverlayAttachmentMode.LeftHand"/> or <see cref="OverlayAttachmentMode.RightHand"/>.</summary>
+    public float HandWidthInMeters { get; init; } = DefaultHandWidthMeters;
 
     /// <summary>Overall overlay alpha (0..1).</summary>
     public float Opacity { get; init; } = 0.96f;
@@ -129,4 +138,36 @@ public sealed record LyricsOverlaySettings
 
     public int GetTotalOffsetMs(TrackInfo? track) =>
         GlobalOffsetMs + GetTrackOffsetMs(track);
+
+    public static bool IsHandAttachmentMode(OverlayAttachmentMode mode) =>
+        mode is OverlayAttachmentMode.LeftHand or OverlayAttachmentMode.RightHand;
+
+    /// <summary>
+    /// Updates <see cref="WidthInMeters"/> and persists the value into the active mode group's width preset
+    /// (<see cref="HandWidthInMeters"/> for Left/Right hand modes, <see cref="HeadWorldWidthInMeters"/> for Head/World modes).
+    /// </summary>
+    public LyricsOverlaySettings WithWidthForCurrentMode(float widthMeters)
+    {
+        var clamped = MathF.Round(Math.Clamp(widthMeters, 0.25f, 2.40f), 2);
+        return IsHandAttachmentMode(AttachmentMode)
+            ? this with { WidthInMeters = clamped, HandWidthInMeters = clamped }
+            : this with { WidthInMeters = clamped, HeadWorldWidthInMeters = clamped };
+    }
+
+    /// <summary>
+    /// Switches <see cref="AttachmentMode"/> and automatically applies the saved width preset for the target mode group
+    /// (<c>0.45m</c> default for Left/Right hand modes, <c>1.00m</c> default for Head/World modes, or user's custom preset).
+    /// </summary>
+    public LyricsOverlaySettings WithAttachmentMode(OverlayAttachmentMode targetMode)
+    {
+        var synced = WithWidthForCurrentMode(WidthInMeters);
+        var targetWidth = IsHandAttachmentMode(targetMode)
+            ? synced.HandWidthInMeters
+            : synced.HeadWorldWidthInMeters;
+        return synced with
+        {
+            AttachmentMode = targetMode,
+            WidthInMeters = MathF.Round(Math.Clamp(targetWidth, 0.25f, 2.40f), 2),
+        };
+    }
 }

@@ -299,7 +299,7 @@
 
                                 <Border Style="{StaticResource SegmentedTrackStyle}">
                                     <UniformGrid Columns="4">
-                                        <RadioButton x:Name="RbModeHead" Style="{StaticResource SegmentedItemRadioStyle}" GroupName="AttachMode" Content="头部跟随 (视野下方)" Checked="OnAttachmentModeRadioChecked" />
+                                        <RadioButton x:Name="RbModeHead" Style="{StaticResource SegmentedItemRadioStyle}" GroupName="AttachMode" Content="头部跟随" Checked="OnAttachmentModeRadioChecked" />
                                         <RadioButton x:Name="RbModeWorld" Style="{StaticResource SegmentedItemRadioStyle}" GroupName="AttachMode" Content="空间固定 (手柄拖拽)" Checked="OnAttachmentModeRadioChecked" />
                                         <RadioButton x:Name="RbModeLeftHand" Style="{StaticResource SegmentedItemRadioStyle}" GroupName="AttachMode" Content="左手腕跟随" Checked="OnAttachmentModeRadioChecked" />
                                         <RadioButton x:Name="RbModeRightHand" Style="{StaticResource SegmentedItemRadioStyle}" GroupName="AttachMode" Content="右手腕跟随" Checked="OnAttachmentModeRadioChecked" />
@@ -322,7 +322,7 @@
 
                                     <TextBlock Grid.Row="0" Grid.Column="0" Text="画面物理宽度 (Width)" Style="{StaticResource FieldLabelText}" />
                                     <Slider x:Name="SldWidthMeters" Grid.Row="0" Grid.Column="1" Minimum="0.25" Maximum="2.40" SmallChange="0.05" LargeChange="0.2" ValueChanged="OnPlacementSliderChanged" />
-                                    <TextBlock x:Name="LblWidthMeters" Grid.Row="0" Grid.Column="2" Text="0.95 m" Style="{StaticResource ValueText}" />
+                                    <TextBlock x:Name="LblWidthMeters" Grid.Row="0" Grid.Column="2" Text="1.00 m" Style="{StaticResource ValueText}" />
 
                                     <TextBlock Grid.Row="1" Grid.Column="0" Text="整体不透明度 (Opacity)" Style="{StaticResource FieldLabelText}" />
                                     <Slider x:Name="SldOpacity" Grid.Row="1" Grid.Column="1" Minimum="0.15" Maximum="1.00" SmallChange="0.05" LargeChange="0.1" ValueChanged="OnPlacementSliderChanged" />

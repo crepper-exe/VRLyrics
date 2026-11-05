@@ -92,6 +92,8 @@ public sealed class SettingsService : IDisposable
             if (loaded is null)
                 return Current;
 
+            loaded = NormalizeLegacySettings(loaded, json);
+
             lock (_lock)
             {
                 _current = loaded;
@@ -139,7 +141,12 @@ public sealed class SettingsService : IDisposable
                 var json = ReadAllTextShared(_settingsPath);
                 var parsed = JsonSerializer.Deserialize<LyricsOverlaySettings>(json, JsonOptions);
                 if (parsed is not null)
-                    return parsed;
+                {
+                    var normalized = NormalizeLegacySettings(parsed, json);
+                    if (!Equals(parsed, normalized))
+                        SaveToDisk(normalized);
+                    return normalized;
+                }
             }
         }
         catch
@@ -150,6 +157,35 @@ public sealed class SettingsService : IDisposable
         var defaults = new LyricsOverlaySettings();
         SaveToDisk(defaults);
         return defaults;
+    }
+
+    private static LyricsOverlaySettings NormalizeLegacySettings(LyricsOverlaySettings loaded, string rawJson)
+    {
+        if (rawJson.Contains("headWorldWidthInMeters", StringComparison.OrdinalIgnoreCase))
+            return loaded;
+
+        if (LyricsOverlaySettings.IsHandAttachmentMode(loaded.AttachmentMode))
+        {
+            var handWidth = loaded.WidthInMeters >= 0.85f
+                ? LyricsOverlaySettings.DefaultHandWidthMeters
+                : loaded.WidthInMeters;
+            return loaded with
+            {
+                WidthInMeters = handWidth,
+                HandWidthInMeters = handWidth,
+                HeadWorldWidthInMeters = LyricsOverlaySettings.DefaultHeadWorldWidthMeters,
+            };
+        }
+
+        var headWorldWidth = MathF.Abs(loaded.WidthInMeters - 0.95f) < 0.005f || MathF.Abs(loaded.WidthInMeters - 0.45f) < 0.005f
+            ? LyricsOverlaySettings.DefaultHeadWorldWidthMeters
+            : loaded.WidthInMeters;
+        return loaded with
+        {
+            WidthInMeters = headWorldWidth,
+            HeadWorldWidthInMeters = headWorldWidth,
+            HandWidthInMeters = LyricsOverlaySettings.DefaultHandWidthMeters,
+        };
     }
 
     private static string ReadAllTextShared(string path)
