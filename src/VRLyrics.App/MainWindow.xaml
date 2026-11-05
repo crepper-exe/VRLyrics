@@ -733,9 +733,9 @@
 
                         <Border Style="{StaticResource SettingsCardBorderStyle}">
                             <StackPanel>
-                                <DockPanel Margin="0,0,0,14">
+                                <DockPanel Margin="0,0,0,10">
                                     <TextBlock Text="精细颜色自定义" Style="{StaticResource CardTitleText}" />
-                                    <TextBlock Text="点击色块打开 RGBA 调色器，或直接输入 #AARRGGBB"
+                                    <TextBlock Text="点击色块打开调色器（支持 RGBA 调节与 #AARRGGBB 色号输入）"
                                                FontSize="12"
                                                Foreground="{StaticResource Text3Brush}"
                                                HorizontalAlignment="Right"
@@ -743,58 +743,49 @@
                                 </DockPanel>
 
                                 <UniformGrid Columns="3">
-                                    <StackPanel Orientation="Horizontal" Margin="0,8,16,8">
-                                        <TextBlock Text="已唱渐变 (上)" Width="90" Style="{StaticResource FieldLabelText}" />
-                                        <Button x:Name="BtnColorSungTop" Style="{StaticResource SwatchButtonStyle}" Width="34" Height="30" Margin="0,0,8,0" Tag="SungTop" Click="OnColorSwatchClick" />
-                                        <TextBox x:Name="TxtColorSungTop" Width="104" Style="{StaticResource DarkTextBoxStyle}" Tag="SungTop" LostFocus="OnColorTextLostFocus" KeyDown="OnColorTextKeyDown" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,5,24,5">
+                                        <TextBlock Text="已唱渐变 (上)" Width="96" Style="{StaticResource FieldLabelText}" VerticalAlignment="Center" />
+                                        <Button x:Name="BtnColorSungTop" Style="{StaticResource SwatchButtonStyle}" Width="48" Height="28" Tag="SungTop" Click="OnColorSwatchClick" />
                                     </StackPanel>
 
-                                    <StackPanel Orientation="Horizontal" Margin="0,8,16,8">
-                                        <TextBlock Text="已唱渐变 (下)" Width="90" Style="{StaticResource FieldLabelText}" />
-                                        <Button x:Name="BtnColorSungBottom" Style="{StaticResource SwatchButtonStyle}" Width="34" Height="30" Margin="0,0,8,0" Tag="SungBottom" Click="OnColorSwatchClick" />
-                                        <TextBox x:Name="TxtColorSungBottom" Width="104" Style="{StaticResource DarkTextBoxStyle}" Tag="SungBottom" LostFocus="OnColorTextLostFocus" KeyDown="OnColorTextKeyDown" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,5,24,5">
+                                        <TextBlock Text="已唱渐变 (下)" Width="96" Style="{StaticResource FieldLabelText}" VerticalAlignment="Center" />
+                                        <Button x:Name="BtnColorSungBottom" Style="{StaticResource SwatchButtonStyle}" Width="48" Height="28" Tag="SungBottom" Click="OnColorSwatchClick" />
                                     </StackPanel>
 
-                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,8">
-                                        <TextBlock Text="已唱外发光" Width="90" Style="{StaticResource FieldLabelText}" />
-                                        <Button x:Name="BtnColorSungGlow" Style="{StaticResource SwatchButtonStyle}" Width="34" Height="30" Margin="0,0,8,0" Tag="SungGlow" Click="OnColorSwatchClick" />
-                                        <TextBox x:Name="TxtColorSungGlow" Width="104" Style="{StaticResource DarkTextBoxStyle}" Tag="SungGlow" LostFocus="OnColorTextLostFocus" KeyDown="OnColorTextKeyDown" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,5,0,5">
+                                        <TextBlock Text="已唱外发光" Width="96" Style="{StaticResource FieldLabelText}" VerticalAlignment="Center" />
+                                        <Button x:Name="BtnColorSungGlow" Style="{StaticResource SwatchButtonStyle}" Width="48" Height="28" Tag="SungGlow" Click="OnColorSwatchClick" />
                                     </StackPanel>
 
-                                    <StackPanel Orientation="Horizontal" Margin="0,8,16,8">
-                                        <TextBlock Text="未唱渐变 (上)" Width="90" Style="{StaticResource FieldLabelText}" />
-                                        <Button x:Name="BtnColorUnsungTop" Style="{StaticResource SwatchButtonStyle}" Width="34" Height="30" Margin="0,0,8,0" Tag="UnsungTop" Click="OnColorSwatchClick" />
-                                        <TextBox x:Name="TxtColorUnsungTop" Width="104" Style="{StaticResource DarkTextBoxStyle}" Tag="UnsungTop" LostFocus="OnColorTextLostFocus" KeyDown="OnColorTextKeyDown" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,5,24,5">
+                                        <TextBlock Text="未唱渐变 (上)" Width="96" Style="{StaticResource FieldLabelText}" VerticalAlignment="Center" />
+                                        <Button x:Name="BtnColorUnsungTop" Style="{StaticResource SwatchButtonStyle}" Width="48" Height="28" Tag="UnsungTop" Click="OnColorSwatchClick" />
                                     </StackPanel>
 
-                                    <StackPanel Orientation="Horizontal" Margin="0,8,16,8">
-                                        <TextBlock Text="未唱渐变 (下)" Width="90" Style="{StaticResource FieldLabelText}" />
-                                        <Button x:Name="BtnColorUnsungBottom" Style="{StaticResource SwatchButtonStyle}" Width="34" Height="30" Margin="0,0,8,0" Tag="UnsungBottom" Click="OnColorSwatchClick" />
-                                        <TextBox x:Name="TxtColorUnsungBottom" Width="104" Style="{StaticResource DarkTextBoxStyle}" Tag="UnsungBottom" LostFocus="OnColorTextLostFocus" KeyDown="OnColorTextKeyDown" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,5,24,5">
+                                        <TextBlock Text="未唱渐变 (下)" Width="96" Style="{StaticResource FieldLabelText}" VerticalAlignment="Center" />
+                                        <Button x:Name="BtnColorUnsungBottom" Style="{StaticResource SwatchButtonStyle}" Width="48" Height="28" Tag="UnsungBottom" Click="OnColorSwatchClick" />
                                     </StackPanel>
 
-                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,8">
-                                        <TextBlock Text="双语翻译色" Width="90" Style="{StaticResource FieldLabelText}" />
-                                        <Button x:Name="BtnColorTranslation" Style="{StaticResource SwatchButtonStyle}" Width="34" Height="30" Margin="0,0,8,0" Tag="Translation" Click="OnColorSwatchClick" />
-                                        <TextBox x:Name="TxtColorTranslation" Width="104" Style="{StaticResource DarkTextBoxStyle}" Tag="Translation" LostFocus="OnColorTextLostFocus" KeyDown="OnColorTextKeyDown" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,5,0,5">
+                                        <TextBlock Text="双语翻译色" Width="96" Style="{StaticResource FieldLabelText}" VerticalAlignment="Center" />
+                                        <Button x:Name="BtnColorTranslation" Style="{StaticResource SwatchButtonStyle}" Width="48" Height="28" Tag="Translation" Click="OnColorSwatchClick" />
                                     </StackPanel>
 
-                                    <StackPanel Orientation="Horizontal" Margin="0,8,16,8">
-                                        <TextBlock Text="上下文行色" Width="90" Style="{StaticResource FieldLabelText}" />
-                                        <Button x:Name="BtnColorContext" Style="{StaticResource SwatchButtonStyle}" Width="34" Height="30" Margin="0,0,8,0" Tag="Context" Click="OnColorSwatchClick" />
-                                        <TextBox x:Name="TxtColorContext" Width="104" Style="{StaticResource DarkTextBoxStyle}" Tag="Context" LostFocus="OnColorTextLostFocus" KeyDown="OnColorTextKeyDown" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,5,24,5">
+                                        <TextBlock Text="上下文行色" Width="96" Style="{StaticResource FieldLabelText}" VerticalAlignment="Center" />
+                                        <Button x:Name="BtnColorContext" Style="{StaticResource SwatchButtonStyle}" Width="48" Height="28" Tag="Context" Click="OnColorSwatchClick" />
                                     </StackPanel>
 
-                                    <StackPanel Orientation="Horizontal" Margin="0,8,16,8">
-                                        <TextBlock Text="文字描边色" Width="90" Style="{StaticResource FieldLabelText}" />
-                                        <Button x:Name="BtnColorStroke" Style="{StaticResource SwatchButtonStyle}" Width="34" Height="30" Margin="0,0,8,0" Tag="Stroke" Click="OnColorSwatchClick" />
-                                        <TextBox x:Name="TxtColorStroke" Width="104" Style="{StaticResource DarkTextBoxStyle}" Tag="Stroke" LostFocus="OnColorTextLostFocus" KeyDown="OnColorTextKeyDown" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,5,24,5">
+                                        <TextBlock Text="文字描边色" Width="96" Style="{StaticResource FieldLabelText}" VerticalAlignment="Center" />
+                                        <Button x:Name="BtnColorStroke" Style="{StaticResource SwatchButtonStyle}" Width="48" Height="28" Tag="Stroke" Click="OnColorSwatchClick" />
                                     </StackPanel>
 
-                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,8">
-                                        <TextBlock Text="背景底板色" Width="90" Style="{StaticResource FieldLabelText}" />
-                                        <Button x:Name="BtnColorBackground" Style="{StaticResource SwatchButtonStyle}" Width="34" Height="30" Margin="0,0,8,0" Tag="Background" Click="OnColorSwatchClick" />
-                                        <TextBox x:Name="TxtColorBackground" Width="104" Style="{StaticResource DarkTextBoxStyle}" Tag="Background" LostFocus="OnColorTextLostFocus" KeyDown="OnColorTextKeyDown" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,5,0,5">
+                                        <TextBlock Text="背景底板色" Width="96" Style="{StaticResource FieldLabelText}" VerticalAlignment="Center" />
+                                        <Button x:Name="BtnColorBackground" Style="{StaticResource SwatchButtonStyle}" Width="48" Height="28" Tag="Background" Click="OnColorSwatchClick" />
                                     </StackPanel>
                                 </UniformGrid>
                             </StackPanel>

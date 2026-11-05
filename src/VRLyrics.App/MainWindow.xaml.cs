@@ -241,15 +241,15 @@ public partial class MainWindow : Window
             SldCornerRadius.Value = s.BackgroundCornerRadius;
             LblCornerRadius.Text = $"{s.BackgroundCornerRadius:0} px";
 
-            SetColorControl(BtnColorSungTop, TxtColorSungTop, s.SungTopColorHex);
-            SetColorControl(BtnColorSungBottom, TxtColorSungBottom, s.SungBottomColorHex);
-            SetColorControl(BtnColorSungGlow, TxtColorSungGlow, s.SungGlowColorHex);
-            SetColorControl(BtnColorUnsungTop, TxtColorUnsungTop, s.UnsungTopColorHex);
-            SetColorControl(BtnColorUnsungBottom, TxtColorUnsungBottom, s.UnsungBottomColorHex);
-            SetColorControl(BtnColorTranslation, TxtColorTranslation, s.TranslationColorHex);
-            SetColorControl(BtnColorContext, TxtColorContext, s.ContextColorHex);
-            SetColorControl(BtnColorStroke, TxtColorStroke, s.StrokeColorHex);
-            SetColorControl(BtnColorBackground, TxtColorBackground, s.BackgroundColorHex);
+            SetColorControl(BtnColorSungTop, s.SungTopColorHex);
+            SetColorControl(BtnColorSungBottom, s.SungBottomColorHex);
+            SetColorControl(BtnColorSungGlow, s.SungGlowColorHex);
+            SetColorControl(BtnColorUnsungTop, s.UnsungTopColorHex);
+            SetColorControl(BtnColorUnsungBottom, s.UnsungBottomColorHex);
+            SetColorControl(BtnColorTranslation, s.TranslationColorHex);
+            SetColorControl(BtnColorContext, s.ContextColorHex);
+            SetColorControl(BtnColorStroke, s.StrokeColorHex);
+            SetColorControl(BtnColorBackground, s.BackgroundColorHex);
 
             SldGlobalOffset.Value = s.GlobalOffsetMs;
             LblGlobalOffset.Text = $"{s.GlobalOffsetMs:+0;-0;0} ms ({s.GlobalOffsetMs / 1000.0:+0.00;-0.00;0.00}s)";
@@ -764,7 +764,7 @@ public partial class MainWindow : Window
         if (sender is not System.Windows.Controls.Button { Tag: string key }) return;
         var currentHex = GetColorHexByKey(_runtime.Settings.Current, key);
 
-        var picker = new ColorPickerWindow($"调节颜色 · {key}", currentHex)
+        var picker = new ColorPickerWindow($"调节颜色 · {GetColorLabelByKey(key)}", currentHex)
         {
             Owner = this
         };
@@ -774,29 +774,6 @@ public partial class MainWindow : Window
             var updated = _runtime.Settings.Update(s => WithColorHexByKey(s, key, picker.SelectedColorHex));
             LoadSettingsIntoControls(updated);
         }
-    }
-
-    private void OnColorTextKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
-    {
-        if (e.Key == Key.Enter && sender is System.Windows.Controls.TextBox tb)
-            ApplyColorTextBox(tb);
-    }
-
-    private void OnColorTextLostFocus(object sender, RoutedEventArgs e)
-    {
-        if (sender is System.Windows.Controls.TextBox tb)
-            ApplyColorTextBox(tb);
-    }
-
-    private void ApplyColorTextBox(System.Windows.Controls.TextBox tb)
-    {
-        if (_suppressUiEvents || tb.Tag is not string key) return;
-        var raw = tb.Text?.Trim() ?? "";
-        if (!raw.StartsWith('#')) raw = "#" + raw;
-        if (raw.Length is not (7 or 9)) return;
-
-        var updated = _runtime.Settings.Update(s => WithColorHexByKey(s, key, raw.ToUpperInvariant()));
-        LoadSettingsIntoControls(updated);
     }
 
     private void OnGlobalOffsetSliderChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -950,14 +927,28 @@ public partial class MainWindow : Window
 
     // ==================== HELPERS ====================
 
-    private static void SetColorControl(System.Windows.Controls.Button swatch, System.Windows.Controls.TextBox textBox, string hex)
+    private static void SetColorControl(System.Windows.Controls.Button swatch, string hex)
     {
-        textBox.Text = hex;
+        swatch.ToolTip = $"{hex}（点击打开调色器）";
         var sk = ColorParseHelper.Parse(hex, SKColors.White);
         swatch.Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(sk.Alpha, sk.Red, sk.Green, sk.Blue));
         swatch.BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(148, 163, 184));
         swatch.BorderThickness = new Thickness(1);
     }
+
+    private static string GetColorLabelByKey(string key) => key switch
+    {
+        "SungTop" => "已唱渐变 (上)",
+        "SungBottom" => "已唱渐变 (下)",
+        "SungGlow" => "已唱外发光",
+        "UnsungTop" => "未唱渐变 (上)",
+        "UnsungBottom" => "未唱渐变 (下)",
+        "Translation" => "双语翻译色",
+        "Context" => "上下文行色",
+        "Stroke" => "文字描边色",
+        "Background" => "背景底板色",
+        _ => key
+    };
 
     private static System.Windows.Media.Brush CreateGradientPreviewBrush(string topHex, string bottomHex)
     {
