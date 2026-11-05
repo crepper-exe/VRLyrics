@@ -79,6 +79,13 @@ public sealed class LyricsOverlayController : IAsyncDisposable
         remove => _vrService.DashboardActionTriggered -= value;
     }
 
+    /// <summary>Raised when the user clicks or drags a mobile-volume-style pill slider on the in-VR SteamVR Dashboard panel.</summary>
+    public event Action<DashboardSliderKind, float>? DashboardSliderValueChanged
+    {
+        add => _vrService.DashboardSliderValueChanged += value;
+        remove => _vrService.DashboardSliderValueChanged -= value;
+    }
+
     public WorldOverlayPose ComputePoseInFrontOfHmd(float distanceMeters = 1.25f, float verticalOffsetMeters = -0.20f) =>
         _vrService.ComputePoseInFrontOfHmd(distanceMeters, verticalOffsetMeters);
 

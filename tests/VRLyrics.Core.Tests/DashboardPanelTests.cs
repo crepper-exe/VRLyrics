@@ -93,6 +93,16 @@ public class DashboardPanelTests
         }
 
         Assert.Empty(expectedActions);
+
+        // Verify all 3 mobile-volume-style pill sliders (Width, Opacity, FontSize) are populated and hit-testable
+        Assert.Equal(3, renderer.Sliders.Count);
+        foreach (var slider in renderer.Sliders)
+        {
+            var hitOk = renderer.TryHitTestSlider(slider.Bounds.MidX, slider.Bounds.MidY, out var hitKind, out var norm, settings, isDemoLoop: false);
+            Assert.True(hitOk);
+            Assert.Equal(slider.Kind, hitKind);
+            Assert.InRange(norm, 0.45f, 0.55f);
+        }
     }
 
     [Fact]

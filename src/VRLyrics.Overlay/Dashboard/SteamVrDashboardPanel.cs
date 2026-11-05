@@ -24,6 +24,7 @@ public sealed class SteamVrDashboardPanel : IDisposable
     private bool _isCursorPressed;
     private DashboardAction? _hoveredAction;
     private DashboardAction? _pressedAction;
+    private DashboardSliderKind? _activeSlider;
     private bool _needsInitialRender = true;
     private DateTimeOffset _lastBackgroundSync = DateTimeOffset.MinValue;
     private bool _disposed;
@@ -31,6 +32,8 @@ public sealed class SteamVrDashboardPanel : IDisposable
     public bool IsCreated => _dashboardHandle != Valve.VR.OpenVR.k_ulOverlayHandleInvalid;
 
     public event Action<DashboardAction>? ActionTriggered;
+
+    public event Action<DashboardSliderKind, float>? SliderValueChanged;
 
     public bool Initialize(CVROverlay overlay, int adapterIndex = -1)
     {
@@ -116,6 +119,7 @@ public sealed class SteamVrDashboardPanel : IDisposable
             CursorY = _cursorY,
             IsCursorPressed = _isCursorPressed,
             HoveredAction = _hoveredAction,
+            ActiveSlider = _activeSlider,
         };
 
         var bmp = _renderer.Render(state);
@@ -152,6 +156,14 @@ public sealed class SteamVrDashboardPanel : IDisposable
                     _cursorX = cx;
                     _cursorY = cy;
 
+                    if (_isCursorPressed && _activeSlider is { } draggingSlider)
+                    {
+                        var norm = _renderer.ComputeSliderNormalized(draggingSlider, cx, currentFrame.Settings, isDemoLoopEnabled);
+                        try { SliderValueChanged?.Invoke(draggingSlider, norm); }
+                        catch { }
+                        break;
+                    }
+
                     var hit = _renderer.HitTest(cx, cy, currentFrame.Settings, isDemoLoopEnabled);
                     if (hit != _hoveredAction)
                     {
@@ -173,8 +185,22 @@ public sealed class SteamVrDashboardPanel : IDisposable
                     _cursorX = cx;
                     _cursorY = cy;
                     _isCursorPressed = true;
-                    _hoveredAction = _renderer.HitTest(cx, cy, currentFrame.Settings, isDemoLoopEnabled);
-                    _pressedAction = _hoveredAction;
+
+                    if (_renderer.TryHitTestSlider(cx, cy, out var sliderKind, out var norm, currentFrame.Settings, isDemoLoopEnabled))
+                    {
+                        _activeSlider = sliderKind;
+                        _pressedAction = null;
+                        try { overlay.TriggerLaserMouseHapticVibration(_dashboardHandle, 0.018f, 190f, 0.48f); }
+                        catch { }
+                        try { SliderValueChanged?.Invoke(sliderKind, norm); }
+                        catch { }
+                    }
+                    else
+                    {
+                        _activeSlider = null;
+                        _hoveredAction = _renderer.HitTest(cx, cy, currentFrame.Settings, isDemoLoopEnabled);
+                        _pressedAction = _hoveredAction;
+                    }
                     break;
                 }
 
@@ -186,6 +212,13 @@ public sealed class SteamVrDashboardPanel : IDisposable
                     _cursorX = cx;
                     _cursorY = cy;
                     _isCursorPressed = false;
+
+                    if (_activeSlider.HasValue)
+                    {
+                        _activeSlider = null;
+                        _pressedAction = null;
+                        break;
+                    }
 
                     var releasedHit = _renderer.HitTest(cx, cy, currentFrame.Settings, isDemoLoopEnabled);
                     var triggered = releasedHit ?? _pressedAction;
@@ -208,6 +241,7 @@ public sealed class SteamVrDashboardPanel : IDisposable
                     _isCursorPressed = false;
                     _hoveredAction = null;
                     _pressedAction = null;
+                    _activeSlider = null;
                     break;
             }
         }
@@ -229,6 +263,7 @@ public sealed class SteamVrDashboardPanel : IDisposable
         _isCursorPressed = false;
         _hoveredAction = null;
         _pressedAction = null;
+        _activeSlider = null;
         _needsInitialRender = true;
         _textureBridge.Reset();
     }

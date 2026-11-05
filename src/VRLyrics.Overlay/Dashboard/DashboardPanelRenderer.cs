@@ -13,11 +13,12 @@ public sealed record DashboardRenderState
     public float? CursorY { get; init; }
     public bool IsCursorPressed { get; init; }
     public DashboardAction? HoveredAction { get; init; }
+    public DashboardSliderKind? ActiveSlider { get; init; }
 }
 
 /// <summary>
 /// Renders the <c>1200 × 760</c> SteamVR Dashboard control panel and <c>128 × 128</c> thumbnail icon using SkiaSharp,
-/// and provides button layout hit-testing for OpenVR laser-mouse events.
+/// and provides button/slider layout hit-testing for OpenVR laser-mouse events.
 /// Uses the same low-saturation charcoal/slate palette, spacious rhythm, and Google Sans + CJK mixed typography as the desktop control hub.
 /// </summary>
 public sealed class DashboardPanelRenderer : IDisposable
@@ -25,8 +26,12 @@ public sealed class DashboardPanelRenderer : IDisposable
     public const int PanelWidth = 1200;
     public const int PanelHeight = 760;
 
-    private const string SteamLogoSvgPath =
-        "M496 256c0 137-111.2 248-248.4 248-113.8 0-209.6-76.3-239-180.4l95.2 39.3c6.4 32.1 34.9 56.4 68.9 56.4 39.2 0 71.9-32.4 70.2-73.5l84.5-60.2c52.1 1.3 95.8-40.9 95.8-93.5 0-51.6-42-93.5-93.7-93.5s-93.7 42-93.7 93.5v1.2L176.6 279c-15.5-.9-30.7 3.4-43.5 12.1L0 236.1C10.2 108.4 117.1 8 247.6 8 384.8 8 496 119 496 256zM155.7 384.3l-30.5-12.6a52.79 52.79 0 0 0 27.2 25.8c26.9 11.2 57.8-1.6 69-28.4 5.4-13 5.5-27.3.1-40.3-5.4-13-15.5-23.2-28.5-28.6-12.9-5.4-26.7-5.2-38.9-.6l31.5 13c19.8 8.2 29.2 30.9 20.9 50.7-8.3 19.9-31 29.2-50.8 21zm173.8-129.9c-34.4 0-62.4-28-62.4-62.3s28-62.3 62.4-62.3 62.4 28 62.4 62.3-27.9 62.3-62.4 62.3zm.1-15.6c25.9 0 46.9-21 46.9-46.8 0-25.9-21-46.8-46.9-46.8s-46.9 21-46.9 46.8c.1 25.8 21.1 46.8 46.9 46.8z";
+    public const float MinWidthMeters = 0.35f;
+    public const float MaxWidthMeters = 2.20f;
+    public const float MinOpacity = 0.15f;
+    public const float MaxOpacity = 1.00f;
+    public const float MinFontSize = 28f;
+    public const float MaxFontSize = 84f;
 
     private static readonly string[] FallbackFonts =
         ["Microsoft YaHei UI", "Microsoft YaHei", "SimHei", "Segoe UI"];
@@ -56,6 +61,7 @@ public sealed class DashboardPanelRenderer : IDisposable
     private readonly SKTypeface _latinBold;
     private readonly SKTypeface _latinMedium;
     private readonly List<DashboardButtonItem> _buttons = new(32);
+    private readonly List<DashboardSliderItem> _sliders = new(4);
 
     public DashboardPanelRenderer()
     {
@@ -71,6 +77,8 @@ public sealed class DashboardPanelRenderer : IDisposable
     public SKBitmap Bitmap => _bitmap;
 
     public IReadOnlyList<DashboardButtonItem> Buttons => _buttons;
+
+    public IReadOnlyList<DashboardSliderItem> Sliders => _sliders;
 
     /// <summary>
     /// Converts OpenVR <c>VREvent_Mouse_t</c> coordinates (where 0,0 is bottom-left) into top-left SkiaSharp canvas coordinates.
@@ -90,6 +98,57 @@ public sealed class DashboardPanelRenderer : IDisposable
                 return _buttons[i].Action;
         }
         return null;
+    }
+
+    /// <summary>
+    /// Hit-tests the mobile-volume-style pill sliders at <c>(canvasX, canvasY)</c> and computes the normalized <c>0..1</c> fill ratio.
+    /// </summary>
+    public bool TryHitTestSlider(
+        float canvasX,
+        float canvasY,
+        out DashboardSliderKind kind,
+        out float normalizedValue,
+        LyricsOverlaySettings? settings = null,
+        bool isDemoLoop = false)
+    {
+        if (_sliders.Count == 0)
+            BuildButtons(settings ?? new LyricsOverlaySettings(), isDemoLoop);
+
+        for (var i = 0; i < _sliders.Count; i++)
+        {
+            var s = _sliders[i];
+            if (s.Bounds.Contains(canvasX, canvasY))
+            {
+                kind = s.Kind;
+                normalizedValue = ComputeSliderNormalizedFromX(s.Bounds, canvasX);
+                return true;
+            }
+        }
+
+        kind = default;
+        normalizedValue = 0f;
+        return false;
+    }
+
+    /// <summary>Computes the normalized <c>0..1</c> value for an active slider from horizontal canvas coordinate <paramref name="canvasX"/>.</summary>
+    public float ComputeSliderNormalized(DashboardSliderKind kind, float canvasX, LyricsOverlaySettings? settings = null, bool isDemoLoop = false)
+    {
+        if (_sliders.Count == 0)
+            BuildButtons(settings ?? new LyricsOverlaySettings(), isDemoLoop);
+
+        for (var i = 0; i < _sliders.Count; i++)
+        {
+            if (_sliders[i].Kind == kind)
+                return ComputeSliderNormalizedFromX(_sliders[i].Bounds, canvasX);
+        }
+        return 0f;
+    }
+
+    private static float ComputeSliderNormalizedFromX(SKRect bounds, float canvasX)
+    {
+        const float edgePad = 14f;
+        var usableWidth = Math.Max(1f, bounds.Width - edgePad * 2f);
+        return Math.Clamp((canvasX - (bounds.Left + edgePad)) / usableWidth, 0f, 1f);
     }
 
     public SKBitmap Render(DashboardRenderState state)
@@ -140,16 +199,43 @@ public sealed class DashboardPanelRenderer : IDisposable
         DrawSectionCard(_canvas, new SKRect(28, 548, PanelWidth - 28, 736), "排版显示与配色方案",
             $"主字号 {s.MainFontSize:0} px   ·   字体 {s.FontFamily}");
 
-        // 4. Interactive Buttons (Native SteamVR laser pointer provides cursor; no duplicate drawn cursor)
+        // 4. Interactive Buttons & Mobile-Volume-Style Pill Sliders
         var hovered = state.HoveredAction;
         if (hovered is null && state.CursorX is { } cx && state.CursorY is { } cy)
             hovered = HitTest(cx, cy, s, state.IsDemoLoopEnabled);
 
         foreach (var btn in _buttons)
         {
+            if (btn.IsSliderSegment)
+                continue;
+
             var isHover = hovered == btn.Action;
             var isPressed = isHover && state.IsCursorPressed;
             DrawButton(_canvas, btn, isHover, isPressed);
+        }
+
+        DashboardSliderKind? hoveredSlider = state.ActiveSlider;
+        if (hoveredSlider is null && state.CursorX is { } scx && state.CursorY is { } scy &&
+            TryHitTestSlider(scx, scy, out var hitSliderKind, out _, s, state.IsDemoLoopEnabled))
+        {
+            hoveredSlider = hitSliderKind;
+        }
+        else if (hoveredSlider is null && hovered is not null)
+        {
+            hoveredSlider = hovered.Value switch
+            {
+                DashboardAction.WidthMinus or DashboardAction.WidthPlus => DashboardSliderKind.Width,
+                DashboardAction.CycleOpacity => DashboardSliderKind.Opacity,
+                DashboardAction.FontSizeMinus or DashboardAction.FontSizePlus => DashboardSliderKind.FontSize,
+                _ => null
+            };
+        }
+
+        foreach (var slider in _sliders)
+        {
+            var isSliderHover = hoveredSlider == slider.Kind;
+            var isSliderActive = state.ActiveSlider == slider.Kind || (isSliderHover && state.IsCursorPressed);
+            DrawPillSlider(_canvas, slider, isSliderHover, isSliderActive);
         }
 
         _canvas.Flush();
@@ -210,6 +296,7 @@ public sealed class DashboardPanelRenderer : IDisposable
     private void BuildButtons(LyricsOverlaySettings s, bool isDemoLoop)
     {
         _buttons.Clear();
+        _sliders.Clear();
 
         // --- Header right toggle switches (Y: 36..106) ---
         _buttons.Add(new DashboardButtonItem(
@@ -258,7 +345,7 @@ public sealed class DashboardPanelRenderer : IDisposable
             "右手腕跟随",
             IsSelected: s.AttachmentMode == OverlayAttachmentMode.RightHand));
 
-        // --- Section 1 Row 2: Spatial Quick Actions (Y: 260..318) ---
+        // --- Section 1 Row 2: Spatial Quick Actions + Mobile-Volume-Style Pill Sliders (Y: 260..318) ---
         var actY1 = 260f;
         var actY2 = 318f;
         _buttons.Add(new DashboardButtonItem(
@@ -273,20 +360,43 @@ public sealed class DashboardPanelRenderer : IDisposable
             s.EnableWorldControllerGrab ? "手柄抓取拖动：已允许" : "手柄抓取拖动：已锁定",
             IsSelected: s.EnableWorldControllerGrab));
 
+        // Pill Slider 1: WidthInMeters (X: 594..867, Y: 260..318)
+        var widthSliderRect = new SKRect(594, actY1, 867, actY2);
+        var widthRatio = Math.Clamp((s.WidthInMeters - MinWidthMeters) / (MaxWidthMeters - MinWidthMeters), 0f, 1f);
+        _sliders.Add(new DashboardSliderItem(
+            DashboardSliderKind.Width,
+            widthSliderRect,
+            "画面宽度",
+            $"{s.WidthInMeters:0.00} m",
+            widthRatio));
+
         _buttons.Add(new DashboardButtonItem(
             DashboardAction.WidthMinus,
-            new SKRect(594, actY1, 768, actY2),
-            $"宽度缩小 ({s.WidthInMeters:0.00} m)"));
+            new SKRect(widthSliderRect.Left, actY1, widthSliderRect.MidX, actY2),
+            $"宽度缩小 ({s.WidthInMeters:0.00} m)",
+            IsSliderSegment: true));
 
         _buttons.Add(new DashboardButtonItem(
             DashboardAction.WidthPlus,
-            new SKRect(782, actY1, 956, actY2),
-            $"宽度放大 ({s.WidthInMeters:0.00} m)"));
+            new SKRect(widthSliderRect.MidX, actY1, widthSliderRect.Right, actY2),
+            $"宽度放大 ({s.WidthInMeters:0.00} m)",
+            IsSliderSegment: true));
+
+        // Pill Slider 2: Opacity (X: 881..1154, Y: 260..318)
+        var opacitySliderRect = new SKRect(881, actY1, 1154, actY2);
+        var opacityRatio = Math.Clamp((s.Opacity - MinOpacity) / (MaxOpacity - MinOpacity), 0f, 1f);
+        _sliders.Add(new DashboardSliderItem(
+            DashboardSliderKind.Opacity,
+            opacitySliderRect,
+            "不透明度",
+            $"{s.Opacity * 100:0}%",
+            opacityRatio));
 
         _buttons.Add(new DashboardButtonItem(
             DashboardAction.CycleOpacity,
-            new SKRect(970, actY1, 1154, actY2),
-            $"不透明度 {s.Opacity * 100:0}%"));
+            opacitySliderRect,
+            $"不透明度 {s.Opacity * 100:0}%",
+            IsSliderSegment: true));
 
         // --- Section 2 Left: Timeline Offset (X: 46..574, Y: 416..508) ---
         var offY1 = 416f;
@@ -374,7 +484,7 @@ public sealed class DashboardPanelRenderer : IDisposable
             "刷新缓存",
             IsPrimary: true));
 
-        // --- Section 3 Row 1: Content & Typography Toggles (Y: 600..654) ---
+        // --- Section 3 Row 1: Content Toggles + Font Size Pill Slider (Y: 600..654) ---
         var cY1 = 600f;
         var cY2 = 654f;
         var cW = 210f;
@@ -399,15 +509,27 @@ public sealed class DashboardPanelRenderer : IDisposable
             s.EnableKaraokeHighlight ? "逐字擦除高亮：开启" : "逐字擦除高亮：关闭",
             IsSelected: s.EnableKaraokeHighlight));
 
+        // Pill Slider 3: MainFontSize (X: 718..1154, Y: 600..654)
+        var fontSliderRect = new SKRect(cStartX + (cW + cGap) * 3, cY1, 1154f, cY2);
+        var fontRatio = Math.Clamp((s.MainFontSize - MinFontSize) / (MaxFontSize - MinFontSize), 0f, 1f);
+        _sliders.Add(new DashboardSliderItem(
+            DashboardSliderKind.FontSize,
+            fontSliderRect,
+            "歌词字号",
+            $"{s.MainFontSize:0} px",
+            fontRatio));
+
         _buttons.Add(new DashboardButtonItem(
             DashboardAction.FontSizeMinus,
-            new SKRect(cStartX + (cW + cGap) * 3, cY1, cStartX + cW + (cW + cGap) * 3, cY2),
-            $"字号缩小 ({s.MainFontSize:0} px)"));
+            new SKRect(fontSliderRect.Left, cY1, fontSliderRect.MidX, cY2),
+            $"字号缩小 ({s.MainFontSize:0} px)",
+            IsSliderSegment: true));
 
         _buttons.Add(new DashboardButtonItem(
             DashboardAction.FontSizePlus,
-            new SKRect(cStartX + (cW + cGap) * 4, cY1, cStartX + cW + (cW + cGap) * 4, cY2),
-            $"字号放大 ({s.MainFontSize:0} px)"));
+            new SKRect(fontSliderRect.MidX, cY1, fontSliderRect.Right, cY2),
+            $"字号放大 ({s.MainFontSize:0} px)",
+            IsSliderSegment: true));
 
         // --- Section 3 Row 2: 5 Color Theme Presets (Y: 666..718) ---
         var tY1 = 666f;
@@ -446,28 +568,11 @@ public sealed class DashboardPanelRenderer : IDisposable
         using var subCjk = new SKFont(_cjkRegular, 13.5f);
 
         using var text1Paint = new SKPaint { IsAntialias = true, Color = ColorText1 };
-        using var text2Paint = new SKPaint { IsAntialias = true, Color = ColorText2 };
         using var text3Paint = new SKPaint { IsAntialias = true, Color = ColorText3 };
 
-        // Brand title & subtitle in Google Sans
+        // Brand title & subtitle in Google Sans (no redundant SteamVR connection badge inside VR dashboard)
         DrawMixedText(canvas, "VRLyrics", 48, 56, SKTextAlign.Left, titleLatin, titleCjk, text1Paint);
         DrawMixedText(canvas, "SteamVR Lyrics Studio", 160, 55, SKTextAlign.Left, subLatin, subCjk, text3Paint);
-
-        // SteamVR Connected status pill with vector Steam logo
-        var badgeRect = new SKRect(326, 36, 466, 62);
-        using (var badgeBg = new SKPaint { IsAntialias = true, Style = SKPaintStyle.Fill, Color = new SKColor(29, 38, 33) })
-        using (var badgeBorder = new SKPaint { IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 1f, Color = new SKColor(67, 94, 77) })
-        using (var badgeFg = new SKPaint { IsAntialias = true, Style = SKPaintStyle.Fill, Color = new SKColor(180, 203, 187) })
-        {
-            canvas.DrawRoundRect(badgeRect, 6f, 6f, badgeBg);
-            canvas.DrawRoundRect(badgeRect, 6f, 6f, badgeBorder);
-
-            DrawSteamLogo(canvas, badgeRect.Left + 10f, badgeRect.MidY - 6.5f, 13f, badgeFg.Color);
-
-            using var badgeLatin = new SKFont(_latinMedium, 12.5f);
-            using var badgeCjk = new SKFont(_cjkRegular, 12.5f);
-            DrawMixedText(canvas, "已连接 SteamVR", badgeRect.Left + 29f, badgeRect.MidY + 4.5f, SKTextAlign.Left, badgeLatin, badgeCjk, badgeFg);
-        }
 
         var f = state.Frame;
         DrawPlayPauseIcon(canvas, 48f, 73f, 12f, f.Track is not null && f.IsPlaying, f.Track is not null ? ColorAccent : ColorText3);
@@ -502,18 +607,100 @@ public sealed class DashboardPanelRenderer : IDisposable
         }
     }
 
-    private static void DrawSteamLogo(SKCanvas canvas, float x, float y, float size, SKColor color)
+    /// <summary>
+    /// Draws a mobile-volume/brightness-style rounded pill fill slider with inner progress fill,
+    /// vertical thumb indicator bar, left <c>-</c> + label, and right value + <c>+</c>.
+    /// </summary>
+    private void DrawPillSlider(SKCanvas canvas, DashboardSliderItem slider, bool isHover, bool isActive)
     {
-        using var path = SKPath.ParseSvgPathData(SteamLogoSvgPath);
-        if (path is null) return;
+        var r = slider.Bounds;
+        const float cornerRadius = 11f;
 
-        canvas.Save();
-        canvas.Translate(x, y);
-        var scale = size / 512f;
-        canvas.Scale(scale, scale);
-        using var paint = new SKPaint { IsAntialias = true, Style = SKPaintStyle.Fill, Color = color };
-        canvas.DrawPath(path, paint);
-        canvas.Restore();
+        // 1. Dark inset track background
+        using (var trackPaint = new SKPaint
+        {
+            IsAntialias = true,
+            Style = SKPaintStyle.Fill,
+            Color = new SKColor(22, 25, 30)
+        })
+        {
+            canvas.DrawRoundRect(r, cornerRadius, cornerRadius, trackPaint);
+        }
+
+        // 2. Clipped horizontal fill bar (mobile volume slider style)
+        var fillRatio = Math.Clamp(slider.FillRatio, 0f, 1f);
+        var fillWidth = Math.Clamp(r.Width * fillRatio, 0f, r.Width);
+        if (fillWidth > 1.5f)
+        {
+            canvas.Save();
+            using var clipRound = new SKRoundRect(r, cornerRadius, cornerRadius);
+            canvas.ClipRoundRect(clipRound, SKClipOperation.Intersect, antialias: true);
+
+            var fillRect = new SKRect(r.Left, r.Top, r.Left + fillWidth, r.Bottom);
+            var gradLeft = isHover || isActive ? new SKColor(56, 68, 84) : new SKColor(46, 56, 70);
+            var gradRight = isHover || isActive ? new SKColor(78, 95, 118) : new SKColor(64, 78, 97);
+
+            using var fillShader = SKShader.CreateLinearGradient(
+                new SKPoint(r.Left, r.MidY),
+                new SKPoint(r.Left + Math.Max(40f, fillWidth), r.MidY),
+                [gradLeft, gradRight],
+                null,
+                SKShaderTileMode.Clamp);
+            using var fillPaint = new SKPaint
+            {
+                IsAntialias = true,
+                Style = SKPaintStyle.Fill,
+                Shader = fillShader
+            };
+            canvas.DrawRoundRect(fillRect, 8f, 8f, fillPaint);
+
+            canvas.Restore();
+        }
+
+        // 3. Outer border
+        using (var borderPaint = new SKPaint
+        {
+            IsAntialias = true,
+            Style = SKPaintStyle.Stroke,
+            StrokeWidth = isHover || isActive ? 1.5f : 1f,
+            Color = isActive ? ColorAccentHover : isHover ? ColorAccent : ColorBorderStrong
+        })
+        {
+            canvas.DrawRoundRect(r, cornerRadius, cornerRadius, borderPaint);
+        }
+
+        // 4. Left minus (-) glyph & Right plus (+) glyph
+        using (var glyphPaint = new SKPaint
+        {
+            IsAntialias = true,
+            Style = SKPaintStyle.Stroke,
+            StrokeWidth = 1.8f,
+            StrokeCap = SKStrokeCap.Round,
+            Color = isHover || isActive ? ColorText1 : ColorText2
+        })
+        {
+            var minusCx = r.Left + 18f;
+            var plusCx = r.Right - 18f;
+            var cy = r.MidY;
+            canvas.DrawLine(minusCx - 4.5f, cy, minusCx + 4.5f, cy, glyphPaint);
+            canvas.DrawLine(plusCx - 4.5f, cy, plusCx + 4.5f, cy, glyphPaint);
+            canvas.DrawLine(plusCx, cy - 4.5f, plusCx, cy + 4.5f, glyphPaint);
+        }
+
+        // 5. Left Label & Right Value in Google Sans + CJK
+        using var labelLatin = new SKFont(_latinMedium, 15f);
+        using var labelCjk = new SKFont(_cjkBold, 15f);
+        using var valueLatin = new SKFont(_latinBold, 15f);
+        using var valueCjk = new SKFont(_cjkBold, 15f);
+        using var labelPaint = new SKPaint { IsAntialias = true, Color = ColorText1 };
+        using var valuePaint = new SKPaint
+        {
+            IsAntialias = true,
+            Color = isHover || isActive ? new SKColor(240, 243, 248) : new SKColor(216, 222, 232)
+        };
+
+        DrawMixedText(canvas, slider.Label, r.Left + 32f, r.MidY + 5.5f, SKTextAlign.Left, labelLatin, labelCjk, labelPaint);
+        DrawMixedText(canvas, slider.ValueText, r.Right - 32f, r.MidY + 5.5f, SKTextAlign.Right, valueLatin, valueCjk, valuePaint);
     }
 
     private void DrawSectionCard(SKCanvas canvas, SKRect rect, string title, string rightSummary)

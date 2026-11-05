@@ -78,6 +78,13 @@ public sealed class SteamVrOverlayService : IDisposable
         remove => _dashboardPanel.ActionTriggered -= value;
     }
 
+    /// <summary>Raised when the user clicks or drags a mobile-volume-style pill slider on the in-VR SteamVR Dashboard control panel.</summary>
+    public event Action<DashboardSliderKind, float>? DashboardSliderValueChanged
+    {
+        add => _dashboardPanel.SliderValueChanged += value;
+        remove => _dashboardPanel.SliderValueChanged -= value;
+    }
+
     /// <summary>
     /// Checks whether <c>vrserver.exe</c> is currently running and whether the current process has sufficient
     /// privileges to open its handle (<c>PROCESS_DUP_HANDLE</c>) as required by <c>openvr_api.dll</c>.

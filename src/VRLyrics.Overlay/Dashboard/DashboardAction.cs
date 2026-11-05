@@ -45,6 +45,22 @@ public enum DashboardAction
     ThemePreset4,
 }
 
+/// <summary>Continuous pill-slider controls available on the in-VR SteamVR Dashboard control panel.</summary>
+public enum DashboardSliderKind
+{
+    Width,
+    Opacity,
+    FontSize,
+}
+
+/// <summary>Bounding box and visual state for a mobile-volume-style pill slider on the Dashboard canvas.</summary>
+public readonly record struct DashboardSliderItem(
+    DashboardSliderKind Kind,
+    SKRect Bounds,
+    string Label,
+    string ValueText,
+    float FillRatio);
+
 /// <summary>Bounding box and visual definition for a clickable button on the Dashboard canvas.</summary>
 public readonly record struct DashboardButtonItem(
     DashboardAction Action,
@@ -54,4 +70,5 @@ public readonly record struct DashboardButtonItem(
     bool IsSelected = false,
     bool IsPrimary = false,
     SKColor? SwatchTop = null,
-    SKColor? SwatchBottom = null);
+    SKColor? SwatchBottom = null,
+    bool IsSliderSegment = false);

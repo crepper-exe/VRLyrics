@@ -44,6 +44,7 @@ public sealed class VRLyricsRuntimeHost : IAsyncDisposable
         Overlay = new LyricsOverlayController(BuildRenderFrame);
         Overlay.WorldPoseCommitted += OnWorldPoseCommitted;
         Overlay.DashboardActionTriggered += ExecuteDashboardAction;
+        Overlay.DashboardSliderValueChanged += ExecuteDashboardSliderChange;
         Media.TrackChanged += OnTrackChanged;
     }
 
@@ -298,6 +299,39 @@ public sealed class VRLyricsRuntimeHost : IAsyncDisposable
                 var idx = (int)action - (int)DashboardAction.ThemePreset0;
                 if (idx >= 0 && idx < ColorThemePreset.All.Count)
                     Settings.Update(s => ColorThemePreset.All[idx].ApplyTo(s));
+                break;
+            }
+        }
+    }
+
+    public void ExecuteDashboardSliderChange(DashboardSliderKind kind, float normalizedValue)
+    {
+        var t = Math.Clamp(normalizedValue, 0f, 1f);
+        switch (kind)
+        {
+            case DashboardSliderKind.Width:
+            {
+                var width = MathF.Round(
+                    DashboardPanelRenderer.MinWidthMeters + t * (DashboardPanelRenderer.MaxWidthMeters - DashboardPanelRenderer.MinWidthMeters),
+                    2);
+                Settings.Update(s => s with { WidthInMeters = Math.Clamp(width, DashboardPanelRenderer.MinWidthMeters, DashboardPanelRenderer.MaxWidthMeters) });
+                break;
+            }
+
+            case DashboardSliderKind.Opacity:
+            {
+                var opacity = MathF.Round(
+                    DashboardPanelRenderer.MinOpacity + t * (DashboardPanelRenderer.MaxOpacity - DashboardPanelRenderer.MinOpacity),
+                    2);
+                Settings.Update(s => s with { Opacity = Math.Clamp(opacity, DashboardPanelRenderer.MinOpacity, DashboardPanelRenderer.MaxOpacity) });
+                break;
+            }
+
+            case DashboardSliderKind.FontSize:
+            {
+                var fontSize = MathF.Round(
+                    DashboardPanelRenderer.MinFontSize + t * (DashboardPanelRenderer.MaxFontSize - DashboardPanelRenderer.MinFontSize));
+                Settings.Update(s => s with { MainFontSize = Math.Clamp(fontSize, DashboardPanelRenderer.MinFontSize, DashboardPanelRenderer.MaxFontSize) });
                 break;
             }
         }

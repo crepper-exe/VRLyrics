@@ -51,61 +51,64 @@ public partial class App : System.Windows.Application
             var isElevatedRetry = e.Args.Any(a =>
                 string.Equals(a, "--elevated-retry", StringComparison.OrdinalIgnoreCase));
 
-            _instanceMutex = new Mutex(false, SingleInstanceMutexName);
-            try
+            if (!selfTest)
             {
-                _ownsMutex = _instanceMutex.WaitOne(0, false);
-            }
-            catch (AbandonedMutexException)
-            {
-                // Previous instance crashed while holding the mutex; we now own it cleanly.
-                _ownsMutex = true;
-            }
-
-            if (!_ownsMutex && Environment.IsPrivilegedProcess)
-            {
-                // An elevated instance (e.g. auto-launched by an elevated SteamVR vrserver.exe,
-                // or relaunched with --elevated-retry) is starting while a non-elevated instance
-                // holds the mutex. Ask the non-elevated instance to yield so we can connect to OpenVR.
+                _instanceMutex = new Mutex(false, SingleInstanceMutexName);
                 try
                 {
-                    using var yieldEvt = EventWaitHandle.OpenExisting(YieldToElevatedEventName);
-                    yieldEvt.Set();
-                    _ownsMutex = _instanceMutex.WaitOne(3500, false);
+                    _ownsMutex = _instanceMutex.WaitOne(0, false);
                 }
                 catch (AbandonedMutexException)
                 {
+                    // Previous instance crashed while holding the mutex; we now own it cleanly.
                     _ownsMutex = true;
                 }
-                catch { }
-            }
 
-            if (!_ownsMutex)
-            {
-                // If launched interactively (not --minimized), signal the running instance to show its window.
-                if (!startMinimized)
+                if (!_ownsMutex && Environment.IsPrivilegedProcess)
                 {
+                    // An elevated instance (e.g. auto-launched by an elevated SteamVR vrserver.exe,
+                    // or relaunched with --elevated-retry) is starting while a non-elevated instance
+                    // holds the mutex. Ask the non-elevated instance to yield so we can connect to OpenVR.
                     try
                     {
-                        using var evt = EventWaitHandle.OpenExisting(ActivateWindowEventName);
-                        evt.Set();
+                        using var yieldEvt = EventWaitHandle.OpenExisting(YieldToElevatedEventName);
+                        yieldEvt.Set();
+                        _ownsMutex = _instanceMutex.WaitOne(3500, false);
+                    }
+                    catch (AbandonedMutexException)
+                    {
+                        _ownsMutex = true;
                     }
                     catch { }
                 }
 
-                _instanceMutex.Dispose();
-                _instanceMutex = null;
-                Shutdown(0);
-                return;
-            }
+                if (!_ownsMutex)
+                {
+                    // If launched interactively (not --minimized), signal the running instance to show its window.
+                    if (!startMinimized)
+                    {
+                        try
+                        {
+                            using var evt = EventWaitHandle.OpenExisting(ActivateWindowEventName);
+                            evt.Set();
+                        }
+                        catch { }
+                    }
 
-            _activateEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ActivateWindowEventName);
-            _ = Task.Run(ListenForActivationSignal);
+                    _instanceMutex.Dispose();
+                    _instanceMutex = null;
+                    Shutdown(0);
+                    return;
+                }
 
-            if (!Environment.IsPrivilegedProcess)
-            {
-                _yieldToElevatedEvent = new EventWaitHandle(false, EventResetMode.AutoReset, YieldToElevatedEventName);
-                _ = Task.Run(ListenForYieldToElevatedSignal);
+                _activateEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ActivateWindowEventName);
+                _ = Task.Run(ListenForActivationSignal);
+
+                if (!Environment.IsPrivilegedProcess)
+                {
+                    _yieldToElevatedEvent = new EventWaitHandle(false, EventResetMode.AutoReset, YieldToElevatedEventName);
+                    _ = Task.Run(ListenForYieldToElevatedSignal);
+                }
             }
 
             _runtime = new VRLyricsRuntimeHost();
