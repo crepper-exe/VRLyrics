@@ -569,7 +569,56 @@
         </Setter>
     </Style>
 
+    <!-- ===== Minimal Dark ScrollBar ===== -->
+    <Style x:Key="ScrollBarThumbStyle" TargetType="Thumb">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="IsTabStop" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Border x:Name="ThumbBd"
+                            Width="4"
+                            CornerRadius="2"
+                            Background="#383E48"
+                            HorizontalAlignment="Right"
+                            Margin="0,2,1,2" />
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="ThumbBd" Property="Background" Value="#586273" />
+                            <Setter TargetName="ThumbBd" Property="Width" Value="5" />
+                        </Trigger>
+                        <Trigger Property="IsDragging" Value="True">
+                            <Setter TargetName="ThumbBd" Property="Background" Value="{StaticResource AccentBrush}" />
+                            <Setter TargetName="ThumbBd" Property="Width" Value="5" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="QuietScrollBarStyle" TargetType="ScrollBar">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Width" Value="8" />
+        <Setter Property="MinWidth" Value="8" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ScrollBar">
+                    <Grid Background="Transparent">
+                        <Track x:Name="PART_Track" IsDirectionReversed="True">
+                            <Track.Thumb>
+                                <Thumb Style="{StaticResource ScrollBarThumbStyle}" />
+                            </Track.Thumb>
+                        </Track>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Implicit styles -->
     <Style TargetType="CheckBox" BasedOn="{StaticResource FluentToggleSwitchStyle}" />
     <Style TargetType="Slider" BasedOn="{StaticResource QuietSliderStyle}" />
+    <Style TargetType="ScrollBar" BasedOn="{StaticResource QuietScrollBarStyle}" />
 </ResourceDictionary>
