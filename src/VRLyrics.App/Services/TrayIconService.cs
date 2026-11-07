@@ -31,6 +31,7 @@ public sealed class TrayIconService : IDisposable
     private readonly ToolStripMenuItem _srcQqMusicItem;
     private readonly ToolStripMenuItem _srcLrclibItem;
     private readonly ToolStripMenuItem _srcLocalItem;
+    private readonly ToolStripMenuItem _ignoreBrowserItem;
     private readonly ToolStripMenuItem _autoStartItem;
     private readonly nint _hIcon;
     private readonly Icon _icon;
@@ -114,6 +115,13 @@ public sealed class TrayIconService : IDisposable
         var reloadItem = new ToolStripMenuItem("重新获取当前歌曲歌词");
         reloadItem.Click += (_, _) => _runtime.ReloadCurrentLyrics(bypassCache: true);
 
+        _ignoreBrowserItem = new ToolStripMenuItem("屏蔽浏览器播放活动")
+        {
+            CheckOnClick = false
+        };
+        _ignoreBrowserItem.Click += (_, _) =>
+            _runtime.Settings.Update(s => s with { IgnoreBrowserMediaSessions = !s.IgnoreBrowserMediaSessions });
+
         _autoStartItem = new ToolStripMenuItem("随 SteamVR 自动启动")
         {
             CheckOnClick = false
@@ -136,6 +144,7 @@ public sealed class TrayIconService : IDisposable
             modeMenu,
             offsetMenu,
             sourceMenu,
+            _ignoreBrowserItem,
             reloadItem,
             new ToolStripSeparator(),
             _autoStartItem,
@@ -204,6 +213,7 @@ public sealed class TrayIconService : IDisposable
                                && !_srcQqMusicItem.Checked
                                && !_srcLrclibItem.Checked
                                && !_srcLocalItem.Checked;
+        _ignoreBrowserItem.Checked = cfg.IgnoreBrowserMediaSessions;
         _autoStartItem.Checked = cfg.AutoStartWithSteamVr;
     }
 

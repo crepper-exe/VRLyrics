@@ -266,6 +266,8 @@ public partial class MainWindow : Window
                                      && RbSourceLrclib.IsChecked != true
                                      && RbSourceLocal.IsChecked != true;
 
+            ChkIgnoreBrowserSessions.IsChecked = s.IgnoreBrowserMediaSessions;
+
             ChkAutoStartWithSteamVr.IsChecked = s.AutoStartWithSteamVr;
             ChkExitWithSteamVr.IsChecked = s.ExitWithSteamVr;
             UpdateManifestStatusText();
@@ -854,6 +856,13 @@ public partial class MainWindow : Window
             : RbSourceLocal.IsChecked == true ? "LocalLRC"
             : "Auto";
         _runtime.SwitchLyricsProvider(provider);
+    }
+
+    private void OnIgnoreBrowserSessionsChanged(object sender, RoutedEventArgs e)
+    {
+        if (_suppressUiEvents || !IsLoaded) return;
+        var ignore = ChkIgnoreBrowserSessions.IsChecked == true;
+        _runtime.Settings.Update(s => s with { IgnoreBrowserMediaSessions = ignore });
     }
 
     private void OnSteamVrLifecycleCheckChanged(object sender, RoutedEventArgs e)

@@ -1,4 +1,6 @@
+using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
+using Microsoft.Win32;
 using VRLyrics.Core.Models;
 using Windows.Media.Control;
 using SessionManager = Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager;
@@ -15,6 +17,43 @@ namespace VRLyrics.Media;
 /// </summary>
 public sealed class MediaSessionService : IAsyncDisposable
 {
+    private static readonly ConcurrentDictionary<string, bool> BrowserAppIdCache = new(StringComparer.OrdinalIgnoreCase);
+
+    private static readonly string[] BrowserIdSubstrings =
+    [
+        "msedge",
+        "microsoftedge",
+        "chrome",
+        "chromium",
+        "firefox",
+        "308046B0AF4A39CB",
+        "E7CF176E110C211B",
+        "waterfox",
+        "librewolf",
+        "floorp",
+        "palemoon",
+        "torbrowser",
+        "brave",
+        "vivaldi",
+        "opera",
+        "thebrowsercompany.arc",
+        "zenbrowser",
+        "yandex",
+        "qqbrowser",
+        "sogouexplorer",
+        "360se",
+        "2345explorer",
+        "liebao",
+        "maxthon",
+        "ucbrowser",
+        "centbrowser",
+        "twinkstar",
+        "catsxp",
+        "quark",
+        "iexplore",
+        "steamwebhelper",
+    ];
+
     private readonly object _lock = new();
     private readonly PlaybackClock _clock = new();
     private readonly NeteaseCloudMusicLogProbe _neteaseProbe = new();
@@ -24,6 +63,7 @@ public sealed class MediaSessionService : IAsyncDisposable
     private Session? _session;
     private Task? _pollTask;
     private TrackInfo? _track;
+    private volatile bool _ignoreBrowserSessions = true;
 
     /// <summary>Raised (on a background thread) when the track changes. Argument may be null when nothing plays.</summary>
     public event Action<TrackInfo?>? TrackChanged;
@@ -33,6 +73,18 @@ public sealed class MediaSessionService : IAsyncDisposable
 
     /// <summary>Optional filter: only accept sessions whose app id contains one of these strings (case-insensitive).</summary>
     public IReadOnlyList<string> AppFilter { get; set; } = [];
+
+    /// <summary>When enabled (default), ignores SMTC playback sessions from web browsers.</summary>
+    public bool IgnoreBrowserSessions
+    {
+        get => _ignoreBrowserSessions;
+        set
+        {
+            if (_ignoreBrowserSessions == value) return;
+            _ignoreBrowserSessions = value;
+            _ = RefreshSessionAsync();
+        }
+    }
 
     /// <summary>How often to poll the timeline and player probes.</summary>
     public TimeSpan PollInterval { get; set; } = TimeSpan.FromMilliseconds(250);
@@ -124,7 +176,7 @@ public sealed class MediaSessionService : IAsyncDisposable
             }
         }
 
-        if (!handled)
+        if (!handled && !(s is null && HasOnlyIgnoredBrowserSessions()))
             SendMediaKeyFallback(VkMediaPlayPause);
 
         if (s is not null)
@@ -153,7 +205,7 @@ public sealed class MediaSessionService : IAsyncDisposable
             }
         }
 
-        if (!handled)
+        if (!handled && !(s is null && HasOnlyIgnoredBrowserSessions()))
             SendMediaKeyFallback(VkMediaPrevTrack);
 
         if (s is not null)
@@ -182,7 +234,7 @@ public sealed class MediaSessionService : IAsyncDisposable
             }
         }
 
-        if (!handled)
+        if (!handled && !(s is null && HasOnlyIgnoredBrowserSessions()))
             SendMediaKeyFallback(VkMediaNextTrack);
 
         if (s is not null)
@@ -303,9 +355,97 @@ public sealed class MediaSessionService : IAsyncDisposable
 
     private bool Accept(Session s)
     {
-        if (AppFilter.Count == 0) return true;
         var id = s.SourceAppUserModelId ?? "";
+        if (_ignoreBrowserSessions && IsBrowserAppId(id))
+            return false;
+
+        if (AppFilter.Count == 0) return true;
         return AppFilter.Any(f => id.Contains(f, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private bool HasOnlyIgnoredBrowserSessions()
+    {
+        if (!_ignoreBrowserSessions || _manager is null)
+            return false;
+
+        try
+        {
+            var all = _manager.GetSessions();
+            return all.Count > 0 && all.All(sess => IsBrowserAppId(sess.SourceAppUserModelId));
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Determines whether a Windows SMTC <c>SourceAppUserModelId</c> belongs to a web browser.</summary>
+    public static bool IsBrowserAppId(string? appId)
+    {
+        if (string.IsNullOrWhiteSpace(appId))
+            return false;
+
+        return BrowserAppIdCache.GetOrAdd(appId.Trim(), static id =>
+        {
+            foreach (var token in BrowserIdSubstrings)
+            {
+                if (id.Contains(token, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            if (id.Equals("arc", StringComparison.OrdinalIgnoreCase) ||
+                id.Equals("arc.exe", StringComparison.OrdinalIgnoreCase) ||
+                id.StartsWith("arc.", StringComparison.OrdinalIgnoreCase) ||
+                id.Equals("zen", StringComparison.OrdinalIgnoreCase) ||
+                id.Equals("zen.exe", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            // Custom-path Firefox / Gecko / Chromium installs register a 16-hex-char AUMID under Software\Classes\AppUserModelId\<id>
+            var displayName = TryGetRegisteredAumidDisplayName(id);
+            if (!string.IsNullOrWhiteSpace(displayName))
+            {
+                if (displayName.Contains("Firefox", StringComparison.OrdinalIgnoreCase) ||
+                    displayName.Contains("Chrome", StringComparison.OrdinalIgnoreCase) ||
+                    displayName.Contains("Chromium", StringComparison.OrdinalIgnoreCase) ||
+                    displayName.Contains("Edge", StringComparison.OrdinalIgnoreCase) ||
+                    displayName.Contains("Brave", StringComparison.OrdinalIgnoreCase) ||
+                    displayName.Contains("Opera", StringComparison.OrdinalIgnoreCase) ||
+                    displayName.Contains("Vivaldi", StringComparison.OrdinalIgnoreCase) ||
+                    displayName.Contains("Waterfox", StringComparison.OrdinalIgnoreCase) ||
+                    displayName.Contains("LibreWolf", StringComparison.OrdinalIgnoreCase) ||
+                    displayName.Contains("Floorp", StringComparison.OrdinalIgnoreCase) ||
+                    displayName.Contains("Browser", StringComparison.OrdinalIgnoreCase) ||
+                    displayName.Contains("浏览器", StringComparison.OrdinalIgnoreCase) ||
+                    displayName.Equals("Zen", StringComparison.OrdinalIgnoreCase) ||
+                    displayName.Equals("Arc", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        });
+    }
+
+    private static string? TryGetRegisteredAumidDisplayName(string appId)
+    {
+        try
+        {
+            using var hkcu = Registry.CurrentUser.OpenSubKey($@"Software\Classes\AppUserModelId\{appId}");
+            if (hkcu?.GetValue("DisplayName") is string name1 && !string.IsNullOrWhiteSpace(name1))
+                return name1;
+
+            using var hklm = Registry.LocalMachine.OpenSubKey($@"Software\Classes\AppUserModelId\{appId}");
+            if (hklm?.GetValue("DisplayName") is string name2 && !string.IsNullOrWhiteSpace(name2))
+                return name2;
+        }
+        catch
+        {
+            // Ignore registry access errors.
+        }
+        return null;
     }
 
     private static bool IsSessionPlaying(Session s)

@@ -31,7 +31,11 @@ public sealed class VRLyricsRuntimeHost : IAsyncDisposable
     public VRLyricsRuntimeHost(SettingsService? settingsService = null)
     {
         Settings = settingsService ?? new SettingsService();
-        Media = new MediaSessionService();
+        Media = new MediaSessionService
+        {
+            IgnoreBrowserSessions = Settings.Current.IgnoreBrowserMediaSessions
+        };
+        Settings.SettingsChanged += s => Media.IgnoreBrowserSessions = s.IgnoreBrowserMediaSessions;
         LyricsService = new LyricsService(
             [
                 new LocalLrcProvider(() => Settings.Current.LocalLyricsFolders),

@@ -931,6 +931,20 @@
                         <!-- Lyrics Provider Segmented Selector & Local Folders Card -->
                         <Border Style="{StaticResource SettingsCardBorderStyle}">
                             <StackPanel>
+                                <DockPanel Margin="0,0,0,14">
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="屏蔽来自浏览器的播放活动" FontSize="13.5" FontWeight="Medium" Foreground="{StaticResource Text1Brush}" />
+                                        <TextBlock Text="忽略 Edge、Chrome、Firefox 等网页视频与直播声音，仅跟随独立音乐软件" FontSize="12" Foreground="{StaticResource Text3Brush}" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                    <CheckBox x:Name="ChkIgnoreBrowserSessions"
+                                              HorizontalAlignment="Right"
+                                              VerticalAlignment="Center"
+                                              Checked="OnIgnoreBrowserSessionsChanged"
+                                              Unchecked="OnIgnoreBrowserSessionsChanged" />
+                                </DockPanel>
+
+                                <Border Style="{StaticResource RowDivider}" Margin="0,0,0,14" />
+
                                 <DockPanel Margin="0,0,0,12">
                                     <TextBlock Text="歌词源优先级与本地词库" Style="{StaticResource CardTitleText}" />
                                     <TextBlock Text="与 SteamVR 仪表盘实时联动" FontSize="12" Foreground="{StaticResource Text3Brush}" HorizontalAlignment="Right" VerticalAlignment="Center" />

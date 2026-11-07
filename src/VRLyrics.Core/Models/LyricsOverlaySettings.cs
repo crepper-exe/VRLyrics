@@ -121,6 +121,9 @@ public sealed record LyricsOverlaySettings
     /// <summary>Preferred lyrics provider name (<c>"Auto"</c>, <c>"NetEase"</c>, <c>"QQMusic"</c>, <c>"LRCLIB"</c>, or <c>"LocalLRC"</c>).</summary>
     public string PreferredLyricsProvider { get; init; } = "Auto";
 
+    /// <summary>Ignore SMTC playback sessions originating from web browsers (Edge, Chrome, Firefox, etc.).</summary>
+    public bool IgnoreBrowserMediaSessions { get; init; } = true;
+
     /// <summary>Optional user-configured directories to scan for local <c>.lrc</c> files.</summary>
     public IReadOnlyList<string> LocalLyricsFolders { get; init; } = [];
 

@@ -1,6 +1,7 @@
 using SkiaSharp;
 using VRLyrics.Core.Abstractions;
 using VRLyrics.Core.Models;
+using VRLyrics.Media;
 using VRLyrics.Overlay.Dashboard;
 using VRLyrics.Overlay.Rendering;
 using VRLyrics.Providers;
@@ -163,6 +164,28 @@ public class DashboardPanelTests
         Assert.Equal(1.25f, settings.WidthInMeters, 2);
         settings = settings.WithAttachmentMode(OverlayAttachmentMode.LeftHand);
         Assert.Equal(0.55f, settings.WidthInMeters, 2);
+    }
+
+    [Theory]
+    [InlineData("MSEdge", true)]
+    [InlineData("msedge.exe", true)]
+    [InlineData("Chrome", true)]
+    [InlineData("chrome.exe", true)]
+    [InlineData("308046B0AF4A39CB", true)]
+    [InlineData("firefox.exe", true)]
+    [InlineData("Brave", true)]
+    [InlineData("OperaStable", true)]
+    [InlineData("qqbrowser.exe", true)]
+    [InlineData("steamwebhelper.exe", true)]
+    [InlineData("cloudmusic.exe", false)]
+    [InlineData("QQMusic.exe", false)]
+    [InlineData("Spotify.exe", false)]
+    [InlineData("AppleInc.AppleMusicWin_nzyj5cx40ttqa!App", false)]
+    [InlineData("foobar2000.exe", false)]
+    [InlineData("lx-music-desktop.exe", false)]
+    public void IsBrowserAppId_AccuratelyDistinguishesBrowsersFromMusicPlayers(string appId, bool expectedIsBrowser)
+    {
+        Assert.Equal(expectedIsBrowser, MediaSessionService.IsBrowserAppId(appId));
     }
 
     [Fact]
