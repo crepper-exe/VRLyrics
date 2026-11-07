@@ -172,6 +172,18 @@ public sealed class VRLyricsRuntimeHost : IAsyncDisposable
     {
         switch (action)
         {
+            case DashboardAction.MediaPrevious:
+                _ = Media.SkipPreviousAsync();
+                break;
+
+            case DashboardAction.MediaPlayPause:
+                _ = Media.TogglePlayPauseAsync();
+                break;
+
+            case DashboardAction.MediaNext:
+                _ = Media.SkipNextAsync();
+                break;
+
             case DashboardAction.ToggleEnabled:
                 Settings.Update(s => s with { Enabled = !s.Enabled });
                 break;
@@ -415,6 +427,7 @@ public sealed class VRLyricsRuntimeHost : IAsyncDisposable
                 Lyrics = _demoLyrics,
                 PlaybackPosition = TimeSpan.FromMilliseconds(demoMs) - TimeSpan.FromMilliseconds(cfg.GlobalOffsetMs),
                 IsPlaying = true,
+                MediaIsPlaying = realTrack is not null && Media.IsPlaying,
                 StatusText = "样式调色演示模式（循环播放逐字卡拉OK与翻译预览）",
                 Settings = cfg,
             };
@@ -426,6 +439,7 @@ public sealed class VRLyricsRuntimeHost : IAsyncDisposable
             Lyrics = lyr,
             PlaybackPosition = Media.Position,
             IsPlaying = Media.IsPlaying,
+            MediaIsPlaying = realTrack is not null && Media.IsPlaying,
             StatusText = status,
             Settings = cfg,
         };

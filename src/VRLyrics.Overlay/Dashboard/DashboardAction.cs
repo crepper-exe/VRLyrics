@@ -5,6 +5,10 @@ namespace VRLyrics.Overlay.Dashboard;
 /// <summary>Interactive actions available on the in-VR SteamVR Dashboard control panel.</summary>
 public enum DashboardAction
 {
+    MediaPrevious,
+    MediaPlayPause,
+    MediaNext,
+
     ToggleEnabled,
     ToggleDemoLoop,
 

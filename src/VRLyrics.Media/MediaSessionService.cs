@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using VRLyrics.Core.Models;
 using Windows.Media.Control;
 using SessionManager = Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager;
@@ -76,6 +77,120 @@ public sealed class MediaSessionService : IAsyncDisposable
     /// <summary>Lists app ids of all current media sessions (for the settings UI).</summary>
     public IReadOnlyList<string> GetSessionAppIds() =>
         _manager?.GetSessions().Select(s => s.SourceAppUserModelId).ToList() ?? [];
+
+    [DllImport("user32.dll")]
+    private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, nuint dwExtraInfo);
+
+    private const byte VkMediaNextTrack = 0xB0;
+    private const byte VkMediaPrevTrack = 0xB1;
+    private const byte VkMediaPlayPause = 0xB3;
+    private const uint KeyEventfKeyUp = 0x0002;
+
+    private static void SendMediaKeyFallback(byte vk)
+    {
+        try
+        {
+            keybd_event(vk, 0, 0, 0);
+            keybd_event(vk, 0, KeyEventfKeyUp, 0);
+        }
+        catch
+        {
+            // Ignore if input simulation is blocked by UIPI.
+        }
+    }
+
+    /// <summary>Toggles Play / Pause on the active SMTC session (falling back to global media key if needed).</summary>
+    public async Task TogglePlayPauseAsync()
+    {
+        Session? s;
+        lock (_lock) s = _session;
+        var handled = false;
+
+        if (s is not null)
+        {
+            try
+            {
+                handled = await s.TryTogglePlayPauseAsync().AsTask().ConfigureAwait(false);
+                if (!handled)
+                {
+                    handled = IsPlaying
+                        ? await s.TryPauseAsync().AsTask().ConfigureAwait(false)
+                        : await s.TryPlayAsync().AsTask().ConfigureAwait(false);
+                }
+            }
+            catch
+            {
+                handled = false;
+            }
+        }
+
+        if (!handled)
+            SendMediaKeyFallback(VkMediaPlayPause);
+
+        if (s is not null)
+        {
+            await Task.Delay(80).ConfigureAwait(false);
+            try { SyncSessionState(s); } catch { }
+        }
+    }
+
+    /// <summary>Skips to the previous track on the active SMTC session (falling back to global media key if needed).</summary>
+    public async Task SkipPreviousAsync()
+    {
+        Session? s;
+        lock (_lock) s = _session;
+        var handled = false;
+
+        if (s is not null)
+        {
+            try
+            {
+                handled = await s.TrySkipPreviousAsync().AsTask().ConfigureAwait(false);
+            }
+            catch
+            {
+                handled = false;
+            }
+        }
+
+        if (!handled)
+            SendMediaKeyFallback(VkMediaPrevTrack);
+
+        if (s is not null)
+        {
+            await Task.Delay(120).ConfigureAwait(false);
+            await UpdateMediaPropertiesAsync(s).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>Skips to the next track on the active SMTC session (falling back to global media key if needed).</summary>
+    public async Task SkipNextAsync()
+    {
+        Session? s;
+        lock (_lock) s = _session;
+        var handled = false;
+
+        if (s is not null)
+        {
+            try
+            {
+                handled = await s.TrySkipNextAsync().AsTask().ConfigureAwait(false);
+            }
+            catch
+            {
+                handled = false;
+            }
+        }
+
+        if (!handled)
+            SendMediaKeyFallback(VkMediaNextTrack);
+
+        if (s is not null)
+        {
+            await Task.Delay(120).ConfigureAwait(false);
+            await UpdateMediaPropertiesAsync(s).ConfigureAwait(false);
+        }
+    }
 
     private async Task PollLoopAsync(CancellationToken ct)
     {

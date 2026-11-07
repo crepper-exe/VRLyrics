@@ -14,6 +14,9 @@ public sealed record LyricsRenderFrame
 
     public bool IsPlaying { get; init; }
 
+    /// <summary>Actual play/pause state of the underlying media player (independent of demo loop override).</summary>
+    public bool? MediaIsPlaying { get; init; }
+
     /// <summary>Optional status text (e.g. searching, provider info, error).</summary>
     public string? StatusText { get; init; }
 

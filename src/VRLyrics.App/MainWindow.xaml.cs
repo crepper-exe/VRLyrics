@@ -297,18 +297,26 @@ public partial class MainWindow : Window
         VrStatusIcon.Fill = statusFg;
 
         var app = _runtime.Media.CurrentAppId;
+        var appDisplay = string.IsNullOrEmpty(app)
+            ? null
+            : app.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? app[..^4] : app;
         var track = _runtime.Media.CurrentTrack;
         var pos = _runtime.Media.Position;
         var dur = track?.Duration;
-        var stateIcon = _runtime.Media.IsPlaying ? "▶" : "⏸";
 
-        PlayerStatusText.Text = string.IsNullOrEmpty(app)
+        PlayerStatusText.Text = string.IsNullOrEmpty(appDisplay)
             ? "播放器：未检测"
-            : $"播放器：{app}  {stateIcon} {FormatTime(pos)} / {FormatTime(dur)}";
+            : $"播放器：{appDisplay} · {FormatShortTime(pos)} / {FormatShortTime(dur)}";
 
         TrackAndLyricsStatusText.Text = track is null
             ? _runtime.StatusMessage
             : $"正在跟随：{track}   |   {_runtime.StatusMessage}";
+
+        var isMediaPlaying = track is not null && _runtime.Media.IsPlaying;
+        TxtMediaPlayPause.Text = isMediaPlaying ? "暂停" : "播放";
+        IconMediaPlayPause.Data = Geometry.Parse(isMediaPlaying
+            ? "M6 19h4V5H6v14zm8-14v14h4V5h-4z"
+            : "M8 5v14l11-7z");
 
         UpdateTrackOffsetControls(_runtime.Settings.Current);
         UpdateManifestStatusText();
@@ -443,6 +451,15 @@ public partial class MainWindow : Window
 
     private void OnReloadLyricsClick(object sender, RoutedEventArgs e) =>
         _runtime.ReloadCurrentLyrics(bypassCache: true);
+
+    private void OnMediaPrevClick(object sender, RoutedEventArgs e) =>
+        _ = _runtime.Media.SkipPreviousAsync();
+
+    private void OnMediaPlayPauseClick(object sender, RoutedEventArgs e) =>
+        _ = _runtime.Media.TogglePlayPauseAsync();
+
+    private void OnMediaNextClick(object sender, RoutedEventArgs e) =>
+        _ = _runtime.Media.SkipNextAsync();
 
     private void OnMinimizeToTrayClick(object sender, RoutedEventArgs e)
     {
@@ -991,6 +1008,9 @@ public partial class MainWindow : Window
 
     private static string FormatTime(TimeSpan? t) =>
         t is { } v ? $"{(int)v.TotalMinutes:00}:{v.Seconds:00}.{v.Milliseconds / 100}" : "--:--";
+
+    private static string FormatShortTime(TimeSpan? t) =>
+        t is { } v ? $"{(int)v.TotalMinutes:00}:{v.Seconds:00}" : "--:--";
 
     public async Task RunUiSelfTestAndScreenshotsAsync(string? dumpDir = null)
     {

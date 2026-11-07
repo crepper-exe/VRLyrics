@@ -52,6 +52,15 @@ public sealed class TrayIconService : IDisposable
         };
         openItem.Click += (_, _) => _openMainWindow();
 
+        var playPauseItem = new ToolStripMenuItem("⏯ 播放 / 暂停");
+        playPauseItem.Click += (_, _) => _ = _runtime.Media.TogglePlayPauseAsync();
+
+        var prevTrackItem = new ToolStripMenuItem("⏮ 上一首");
+        prevTrackItem.Click += (_, _) => _ = _runtime.Media.SkipPreviousAsync();
+
+        var nextTrackItem = new ToolStripMenuItem("⏭ 下一首");
+        nextTrackItem.Click += (_, _) => _ = _runtime.Media.SkipNextAsync();
+
         _enabledItem = new ToolStripMenuItem("显示 VR 歌词叠加层")
         {
             CheckOnClick = false
@@ -60,7 +69,7 @@ public sealed class TrayIconService : IDisposable
             _runtime.Settings.Update(s => s with { Enabled = !s.Enabled });
 
         var modeMenu = new ToolStripMenuItem("显示位置模式");
-        _modeHeadItem = CreateModeItem("头部跟随 (视野下方)", OverlayAttachmentMode.HeadLocked);
+        _modeHeadItem = CreateModeItem("头部跟随", OverlayAttachmentMode.HeadLocked);
         _modeWorldItem = CreateModeItem("空间固定 (手柄可拖拽)", OverlayAttachmentMode.WorldLocked);
         _modeLeftHandItem = CreateModeItem("左手腕跟随", OverlayAttachmentMode.LeftHand);
         _modeRightHandItem = CreateModeItem("右手腕跟随", OverlayAttachmentMode.RightHand);
@@ -118,6 +127,10 @@ public sealed class TrayIconService : IDisposable
         _menu.Items.AddRange(
         [
             openItem,
+            new ToolStripSeparator(),
+            playPauseItem,
+            prevTrackItem,
+            nextTrackItem,
             new ToolStripSeparator(),
             _enabledItem,
             modeMenu,

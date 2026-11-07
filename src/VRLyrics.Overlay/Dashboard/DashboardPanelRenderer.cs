@@ -154,7 +154,8 @@ public sealed class DashboardPanelRenderer : IDisposable
     public SKBitmap Render(DashboardRenderState state)
     {
         var s = state.Frame.Settings;
-        BuildButtons(s, state.IsDemoLoopEnabled);
+        var mediaPlaying = state.Frame.MediaIsPlaying ?? (state.Frame.Track is not null && state.Frame.IsPlaying);
+        BuildButtons(s, state.IsDemoLoopEnabled, mediaPlaying);
 
         _canvas.Clear(SKColors.Transparent);
 
@@ -284,15 +285,33 @@ public sealed class DashboardPanelRenderer : IDisposable
         return data.ToArray();
     }
 
-    private void BuildButtons(LyricsOverlaySettings s, bool isDemoLoop)
+    private void BuildButtons(LyricsOverlaySettings s, bool isDemoLoop, bool isMediaPlaying = false)
     {
         _buttons.Clear();
         _sliders.Clear();
 
+        // --- Header media transport controls (Y: 32..104, X: 500..736) ---
+        _buttons.Add(new DashboardButtonItem(
+            DashboardAction.MediaPrevious,
+            new SKRect(500, 32, 572, 104),
+            "上一首"));
+
+        _buttons.Add(new DashboardButtonItem(
+            DashboardAction.MediaPlayPause,
+            new SKRect(582, 32, 654, 104),
+            isMediaPlaying ? "暂停" : "播放",
+            IsSelected: isMediaPlaying,
+            IsPrimary: !isMediaPlaying));
+
+        _buttons.Add(new DashboardButtonItem(
+            DashboardAction.MediaNext,
+            new SKRect(664, 32, 736, 104),
+            "下一首"));
+
         // --- Header right toggle switches (Y: 32..104, right-aligned to section card edge X=1172) ---
         _buttons.Add(new DashboardButtonItem(
             DashboardAction.ToggleEnabled,
-            new SKRect(738, 32, 948, 104),
+            new SKRect(752, 32, 956, 104),
             "显示 VR 歌词",
             s.Enabled ? "已开启" : "已隐藏",
             IsSelected: s.Enabled,
@@ -300,7 +319,7 @@ public sealed class DashboardPanelRenderer : IDisposable
 
         _buttons.Add(new DashboardButtonItem(
             DashboardAction.ToggleDemoLoop,
-            new SKRect(962, 32, 1172, 104),
+            new SKRect(968, 32, 1172, 104),
             "样式演示动画",
             isDemoLoop ? "已开启" : "已关闭",
             IsSelected: isDemoLoop));
@@ -566,10 +585,10 @@ public sealed class DashboardPanelRenderer : IDisposable
             ? $"{t.Title} - {t.Artist}   ({FormatTime(f.PlaybackPosition)} / {FormatTime(t.Duration)})"
             : "当前未检测到正在播放的曲目";
 
-        DrawMixedText(canvas, TruncateText(trackTitle, trackCjk, 660f), 50, 83, SKTextAlign.Left, trackLatin, trackCjk, text1Paint);
+        DrawMixedText(canvas, TruncateText(trackTitle, trackCjk, 434f), 50, 83, SKTextAlign.Left, trackLatin, trackCjk, text1Paint);
 
         var statusStr = !string.IsNullOrWhiteSpace(f.StatusText) ? f.StatusText! : "等待音乐播放…";
-        DrawMixedText(canvas, TruncateText(statusStr, subCjk, 680f), 30, 106, SKTextAlign.Left, subLatin, subCjk, text3Paint);
+        DrawMixedText(canvas, TruncateText(statusStr, subCjk, 454f), 30, 106, SKTextAlign.Left, subLatin, subCjk, text3Paint);
     }
 
     private static void DrawPlayPauseIcon(SKCanvas canvas, float x, float y, float size, bool isPlaying, SKColor color)
@@ -749,6 +768,13 @@ public sealed class DashboardPanelRenderer : IDisposable
             canvas.DrawRoundRect(r, 10f, 10f, strokePaint);
         }
 
+        // Special layout for header media transport controls (MediaPrevious / MediaPlayPause / MediaNext)
+        if (btn.Action is DashboardAction.MediaPrevious or DashboardAction.MediaPlayPause or DashboardAction.MediaNext)
+        {
+            DrawHeaderMediaTransportButtonContent(canvas, r, btn, isHover);
+            return;
+        }
+
         // Special layout for header toggle switches (ToggleEnabled / ToggleDemoLoop): draw pill switch on right
         if (btn.Action is DashboardAction.ToggleEnabled or DashboardAction.ToggleDemoLoop)
         {
@@ -801,6 +827,74 @@ public sealed class DashboardPanelRenderer : IDisposable
             DrawMixedText(canvas, btn.Label, r.MidX + textCenterOffsetX, r.MidY - 3f, SKTextAlign.Center, labelLatin, labelCjk, labelPaint);
             DrawMixedText(canvas, btn.SubLabel!, r.MidX + textCenterOffsetX, r.MidY + 16f, SKTextAlign.Center, subLatin, subCjk, subPaint);
         }
+    }
+
+    private void DrawHeaderMediaTransportButtonContent(SKCanvas canvas, SKRect r, DashboardButtonItem btn, bool isHover)
+    {
+        var cx = r.MidX;
+        var cy = r.Top + 25.5f;
+        var iconColor = btn.IsSelected || isHover ? ColorText1 : new SKColor(214, 220, 228);
+
+        using var iconPaint = new SKPaint
+        {
+            IsAntialias = true,
+            Style = SKPaintStyle.Fill,
+            Color = iconColor
+        };
+
+        switch (btn.Action)
+        {
+            case DashboardAction.MediaPrevious:
+            {
+                canvas.DrawRoundRect(new SKRect(cx - 8f, cy - 7f, cx - 5f, cy + 7f), 1.2f, 1.2f, iconPaint);
+                using var path = new SKPath();
+                path.MoveTo(cx - 3.2f, cy);
+                path.LineTo(cx + 8f, cy - 7f);
+                path.LineTo(cx + 8f, cy + 7f);
+                path.Close();
+                canvas.DrawPath(path, iconPaint);
+                break;
+            }
+            case DashboardAction.MediaPlayPause:
+            {
+                if (btn.IsSelected)
+                {
+                    canvas.DrawRoundRect(new SKRect(cx - 6.5f, cy - 7.5f, cx - 2.2f, cy + 7.5f), 1.4f, 1.4f, iconPaint);
+                    canvas.DrawRoundRect(new SKRect(cx + 2.2f, cy - 7.5f, cx + 6.5f, cy + 7.5f), 1.4f, 1.4f, iconPaint);
+                }
+                else
+                {
+                    using var path = new SKPath();
+                    path.MoveTo(cx - 5.2f, cy - 8f);
+                    path.LineTo(cx + 8.5f, cy);
+                    path.LineTo(cx - 5.2f, cy + 8f);
+                    path.Close();
+                    canvas.DrawPath(path, iconPaint);
+                }
+                break;
+            }
+            case DashboardAction.MediaNext:
+            {
+                using var path = new SKPath();
+                path.MoveTo(cx + 3.2f, cy);
+                path.LineTo(cx - 8f, cy - 7f);
+                path.LineTo(cx - 8f, cy + 7f);
+                path.Close();
+                canvas.DrawPath(path, iconPaint);
+                canvas.DrawRoundRect(new SKRect(cx + 5f, cy - 7f, cx + 8f, cy + 7f), 1.2f, 1.2f, iconPaint);
+                break;
+            }
+        }
+
+        using var subLatin = new SKFont(btn.IsSelected ? _latinBold : _latinMedium, 12.5f);
+        using var subCjk = new SKFont(btn.IsSelected ? _cjkBold : _cjkRegular, 12.5f);
+        using var labelPaint = new SKPaint
+        {
+            IsAntialias = true,
+            Color = btn.IsSelected ? ColorText1 : ColorText2
+        };
+
+        DrawMixedText(canvas, btn.Label, cx, r.Bottom - 13.5f, SKTextAlign.Center, subLatin, subCjk, labelPaint);
     }
 
     private void DrawHeaderToggleButtonContent(SKCanvas canvas, SKRect r, DashboardButtonItem btn)
