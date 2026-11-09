@@ -21,6 +21,8 @@ public sealed class PlaybackClock
     // Last raw SMTC report, used to detect whether a report actually carries new information.
     private TimeSpan _lastReportedPosition = TimeSpan.MinValue;
     private DateTimeOffset _lastReportedUpdate = DateTimeOffset.MinValue;
+    private DateTimeOffset _lastPauseTimeUtc = DateTimeOffset.MinValue;
+    private bool _hasSyncedPlayingReport;
 
     public bool IsPlaying { get { lock (_lock) return _playing; } }
 
@@ -46,15 +48,20 @@ public sealed class PlaybackClock
         {
             if (duration is { TotalSeconds: > 0 }) _duration = duration;
 
+            var isNewReport = position != _lastReportedPosition || lastUpdated != _lastReportedUpdate;
+
+            // Once we have locked onto a playing report (or paused at least once on the current track),
+            // never re-extrapolate an unchanged pre-pause SMTC report—otherwise the time spent paused
+            // would be added to (UtcNow - lastUpdated) when playback resumes.
+            if (!isNewReport && (_hasSyncedPlayingReport || _lastPauseTimeUtc != DateTimeOffset.MinValue))
+                return;
+
             var now = _stopwatch.Elapsed;
             var estimated = EstimatePosition(position, lastUpdated);
 
             var current = ComputeUnlocked(now);
             var drift = (estimated - current).Duration();
-            var isNewReport = position != _lastReportedPosition || lastUpdated != _lastReportedUpdate;
 
-            // Accept if this is a new SMTC report OR if our local clock drifted from the SMTC timeline
-            // (e.g. when VRLyrics was opened mid-song and _playing just turned true).
             if (!isNewReport && drift < TimeSpan.FromMilliseconds(200))
                 return;
 
@@ -62,6 +69,8 @@ public sealed class PlaybackClock
             _lastReportedUpdate = lastUpdated;
             _anchorPosition = estimated;
             _anchorTime = now;
+            if (_playing)
+                _hasSyncedPlayingReport = true;
         }
     }
 
@@ -74,7 +83,7 @@ public sealed class PlaybackClock
         lock (_lock)
         {
             if (duration is { TotalSeconds: > 0 }) _duration = duration;
-            var threshold = driftThreshold ?? TimeSpan.FromMilliseconds(150);
+            var threshold = driftThreshold ?? TimeSpan.FromMilliseconds(45);
             var now = _stopwatch.Elapsed;
             var current = ComputeUnlocked(now);
             if ((probePosition - current).Duration() >= threshold)
@@ -89,17 +98,27 @@ public sealed class PlaybackClock
     {
         lock (_lock)
         {
+            var wasPlaying = _playing;
             var now = _stopwatch.Elapsed;
             _anchorPosition = ComputeUnlocked(now);
             _anchorTime = now;
             _playing = playing;
             _rate = rate > 0 ? rate : 1.0;
 
-            // If we just transitioned to playing and already have a valid SMTC timeline report,
-            // re-evaluate the extrapolated position immediately.
-            if (_playing && _lastReportedPosition != TimeSpan.MinValue && _lastReportedUpdate.Year > 2000)
+            if (wasPlaying && !playing)
             {
+                _lastPauseTimeUtc = DateTimeOffset.UtcNow;
+            }
+            else if (_playing &&
+                     !_hasSyncedPlayingReport &&
+                     _lastPauseTimeUtc == DateTimeOffset.MinValue &&
+                     _lastReportedPosition != TimeSpan.MinValue &&
+                     _lastReportedUpdate.Year > 2000)
+            {
+                // Mid-song startup: if ReportTimeline was called while _playing was still false,
+                // extrapolate once when _playing turns true for the first time.
                 _anchorPosition = EstimatePosition(_lastReportedPosition, _lastReportedUpdate);
+                _hasSyncedPlayingReport = true;
             }
         }
     }
@@ -114,13 +133,15 @@ public sealed class PlaybackClock
             _duration = duration;
             _lastReportedPosition = TimeSpan.MinValue;
             _lastReportedUpdate = DateTimeOffset.MinValue;
+            _lastPauseTimeUtc = DateTimeOffset.MinValue;
+            _hasSyncedPlayingReport = false;
         }
     }
 
     private TimeSpan EstimatePosition(TimeSpan reportedPosition, DateTimeOffset lastUpdated)
     {
         var estimated = reportedPosition;
-        if (_playing && lastUpdated.Year > 2000)
+        if (_playing && lastUpdated.Year > 2000 && lastUpdated > _lastPauseTimeUtc)
         {
             var age = DateTimeOffset.UtcNow - lastUpdated.ToUniversalTime();
             var maxAge = (_duration is { TotalSeconds: > 0 } d ? d : TimeSpan.FromHours(2)) + TimeSpan.FromMinutes(2);

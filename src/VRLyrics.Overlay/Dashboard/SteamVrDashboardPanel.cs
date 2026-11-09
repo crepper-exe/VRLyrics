@@ -31,6 +31,8 @@ public sealed class SteamVrDashboardPanel : IDisposable
 
     public bool IsCreated => _dashboardHandle != Valve.VR.OpenVR.k_ulOverlayHandleInvalid;
 
+    public bool IsActiveTab { get; private set; }
+
     public event Action<DashboardAction>? ActionTriggered;
 
     public event Action<DashboardSliderKind, float>? SliderValueChanged;
@@ -101,6 +103,7 @@ public sealed class SteamVrDashboardPanel : IDisposable
 
         var inputChanged = PollDashboardEvents(overlay, currentFrame, isDemoLoopEnabled);
         var isActiveTab = overlay.IsActiveDashboardOverlay(_dashboardHandle);
+        IsActiveTab = isActiveTab;
         var now = DateTimeOffset.UtcNow;
 
         // Render at full responsiveness while the VRLyrics dashboard tab is open in VR,
@@ -264,6 +267,7 @@ public sealed class SteamVrDashboardPanel : IDisposable
         _hoveredAction = null;
         _pressedAction = null;
         _activeSlider = null;
+        IsActiveTab = false;
         _needsInitialRender = true;
         _textureBridge.Reset();
     }

@@ -56,6 +56,8 @@ public sealed class SteamVrOverlayService : IDisposable
 
     public bool IsWorldGrabActive => _grabInteractor.IsGrabbing;
 
+    public bool IsDashboardActive => _dashboardPanel.IsActiveTab;
+
     /// <summary>Raised when SteamVR requests the overlay process to quit (<c>VREvent_Quit</c>).</summary>
     public event Action? QuitRequested;
 

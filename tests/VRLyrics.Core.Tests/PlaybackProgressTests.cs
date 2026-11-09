@@ -69,4 +69,71 @@ public sealed class PlaybackProgressTests
         Assert.Equal(TimeSpan.FromSeconds(227), snapshot.Value.Duration);
         Assert.InRange(snapshot.Value.Position.TotalSeconds, 135.4, 135.6);
     }
+
+    [Fact]
+    public async Task PlaybackClock_RepeatedPauseResumeWithStaleSmtcTimeline_DoesNotAccumulateDrift()
+    {
+        var clock = new PlaybackClock();
+        clock.Reset(TimeSpan.Zero, TimeSpan.FromMinutes(4));
+        clock.SetPlaying(true);
+
+        var initialReportTime = DateTimeOffset.UtcNow;
+        clock.ReportTimeline(TimeSpan.FromSeconds(20), initialReportTime, TimeSpan.FromMinutes(4));
+
+        // Simulate 3 cycles of pausing for 80ms and resuming while SMTC continues returning the stale initial timeline report.
+        for (var i = 0; i < 3; i++)
+        {
+            clock.SetPlaying(false);
+            var pausedPos = clock.Position;
+            await Task.Delay(80);
+            clock.ReportTimeline(TimeSpan.FromSeconds(20), initialReportTime, TimeSpan.FromMinutes(4));
+            Assert.InRange((clock.Position - pausedPos).Duration().TotalMilliseconds, 0, 5);
+
+            clock.SetPlaying(true);
+            clock.ReportTimeline(TimeSpan.FromSeconds(20), initialReportTime, TimeSpan.FromMinutes(4));
+            // Resuming must NOT jump forward by the 80ms spent paused.
+            Assert.InRange((clock.Position - pausedPos).Duration().TotalMilliseconds, 0, 25);
+        }
+    }
+
+    [Fact]
+    public void NeteaseLogProbe_RepeatedPauseResumeWithFadeOutAndRapidToggle_DoesNotAccumulateLag()
+    {
+        // Real event sequence from NetEase Cloud Music 3.x (cloudmusic.elog):
+        // 1) Pause triggers SMTC status=1 immediately, but audio_player.cpp fades out for ~610 ms before pausing.
+        // 2) Rapid pause+resume (<610 ms) logs Pause+Play on the same tick (4018093) and a delayed "native播放state",2 31 ms later (4018124).
+        const string log = """
+            [9332:12524:1109/134419:3844390:INFO:cloudmusic_player.cpp(422)] OnLoad:2166447251_J1MVO2
+            [9332:12524:1109/134420:3844640:INFO:audio_player.cpp(169)] Play 2166447251_J1MVO2|play|token1
+            [9332:13764:1109/134420:3844640:INFO:smtc_wrapper.cpp(175)] [SMTCWrapper] SMTC status=0
+            [9332:13764:1109/134555:3940250:INFO:smtc_wrapper.cpp(260)] [SMTCWrapper] Button pressed: 1
+            [9332:36664:1109/134555:3940250:INFO:cef_log.cpp(15)] [render log]info:,"【playing】","pause"
+            [9332:13764:1109/134555:3940265:INFO:smtc_wrapper.cpp(175)] [SMTCWrapper] SMTC status=1
+            [9332:12524:1109/134556:3940859:INFO:audio_player.cpp(198)] Pause 2166447251_J1MVO2|pause|token2
+            [9332:36664:1109/134556:3940859:INFO:cef_log.cpp(15)] [render log]info:,"【playing】","native播放state",2,"2166447251_J1MVO2"
+            [9332:13764:1109/134557:3942250:INFO:smtc_wrapper.cpp(260)] [SMTCWrapper] Button pressed: 0
+            [9332:13764:1109/134557:3942265:INFO:smtc_wrapper.cpp(175)] [SMTCWrapper] SMTC status=0
+            [9332:12524:1109/134557:3942265:INFO:audio_player.cpp(169)] Play 2166447251_J1MVO2|resume|token3
+            [9332:13764:1109/134712:4017609:INFO:smtc_wrapper.cpp(260)] [SMTCWrapper] Button pressed: 1
+            [9332:36664:1109/134712:4017609:INFO:cef_log.cpp(15)] [render log]info:,"【playing】","pause"
+            [9332:13764:1109/134712:4017609:INFO:smtc_wrapper.cpp(175)] [SMTCWrapper] SMTC status=1
+            [9332:13764:1109/134713:4018093:INFO:smtc_wrapper.cpp(260)] [SMTCWrapper] Button pressed: 0
+            [9332:12524:1109/134713:4018093:INFO:audio_player.cpp(198)] Pause 2166447251_J1MVO2|pause|token4
+            [9332:13764:1109/134713:4018093:INFO:smtc_wrapper.cpp(175)] [SMTCWrapper] SMTC status=0
+            [9332:12524:1109/134713:4018093:INFO:audio_player.cpp(169)] Play 2166447251_J1MVO2|resume|token5
+            [9332:36664:1109/134713:4018124:INFO:cef_log.cpp(15)] [render log]info:,"【playing】","native播放state",2,"2166447251_J1MVO2"
+            """;
+
+        var probe = new NeteaseCloudMusicLogProbe("nonexistent.elog");
+        probe.FeedDecodedLog(log + "\n", targetPid: 9332);
+
+        // Segment 1: 3940859 - 3844640 = 96,219 ms (includes the 609 ms fade-out)
+        // Segment 2: 4018093 - 3942265 = 75,828 ms (includes the 484 ms rapid pause-resume fade)
+        // Segment 3: 4020093 - 4018093 =  2,000 ms (still playing after rapid resume despite delayed native播放state=2)
+        // Total expected = 174,047 ms
+        var snap = probe.GetSnapshot(currentTickMs: 4020093);
+        Assert.NotNull(snap);
+        Assert.True(snap.Value.IsPlaying);
+        Assert.Equal(174047, snap.Value.Position.TotalMilliseconds, precision: 1);
+    }
 }

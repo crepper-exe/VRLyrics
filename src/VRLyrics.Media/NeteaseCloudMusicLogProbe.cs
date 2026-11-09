@@ -26,6 +26,7 @@ public sealed partial class NeteaseCloudMusicLogProbe
     private const int InitialTailBytes = 1024 * 1024; // 1 MB covers ~30-60 minutes of playback history
     private static readonly byte[] DecodeTable = CreateDecodeTable();
 
+    private readonly object _sync = new();
     private readonly string _logPath;
     private readonly Dictionary<long, TimeSpan> _knownDurations = new();
 
@@ -39,6 +40,8 @@ public sealed partial class NeteaseCloudMusicLogProbe
     private uint _lastPlayStartTickMs;
     private uint _lastEventTickMs;
     private bool _isPlaying;
+    private bool _isNativePlaying;
+    private bool _hasSeenNativeAudioEvents;
     private bool _hasState;
 
     public NeteaseCloudMusicLogProbe(string? logPath = null)
@@ -98,95 +101,104 @@ public sealed partial class NeteaseCloudMusicLogProbe
     /// <summary>Polls <c>cloudmusic.elog</c> for any new events and returns the current extrapolated playback snapshot.</summary>
     public NeteasePlaybackSnapshot? Poll(uint? currentTickMs = null)
     {
-        if (!File.Exists(_logPath))
-            return null;
-
-        try
+        lock (_sync)
         {
-            using var fs = new FileStream(_logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-            var len = fs.Length;
-            if (len == 0) return null;
+            if (!File.Exists(_logPath))
+                return null;
 
-            // Detect log rotation / restart or first read:
-            if (_lastFileLength < 0 || len < _readOffset)
+            try
             {
-                ResetState();
-                _readOffset = Math.Max(0, len - InitialTailBytes);
-                fs.Seek(_readOffset, SeekOrigin.Begin);
-                var initialBytes = new byte[len - _readOffset];
-                var read = fs.Read(initialBytes, 0, initialBytes.Length);
-                DecodeInPlace(initialBytes.AsSpan(0, read));
-                var text = Encoding.UTF8.GetString(initialBytes, 0, read);
+                using var fs = new FileStream(_logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                var len = fs.Length;
+                if (len == 0) return null;
 
-                // If we started mid-line, skip the partial first line.
-                if (_readOffset > 0)
+                // Detect log rotation / restart or first read:
+                if (_lastFileLength < 0 || len < _readOffset)
                 {
-                    var firstNewline = text.IndexOf('\n');
-                    if (firstNewline >= 0) text = text[(firstNewline + 1)..];
+                    ResetState();
+                    _readOffset = Math.Max(0, len - InitialTailBytes);
+                    fs.Seek(_readOffset, SeekOrigin.Begin);
+                    var initialBytes = new byte[len - _readOffset];
+                    var read = fs.Read(initialBytes, 0, initialBytes.Length);
+                    DecodeInPlace(initialBytes.AsSpan(0, read));
+                    var text = Encoding.UTF8.GetString(initialBytes, 0, read);
+
+                    // If we started mid-line, skip the partial first line.
+                    if (_readOffset > 0)
+                    {
+                        var firstNewline = text.IndexOf('\n');
+                        if (firstNewline >= 0) text = text[(firstNewline + 1)..];
+                    }
+
+                    // Lock onto the latest PID present in the tail so old sessions before an app restart are ignored.
+                    var latestPid = FindLatestPid(text);
+                    if (latestPid > 0) _activePid = latestPid;
+
+                    FeedText(text);
+                    _readOffset = len;
+                    _lastFileLength = len;
                 }
-
-                // Lock onto the latest PID present in the tail so old sessions before an app restart are ignored.
-                var latestPid = FindLatestPid(text);
-                if (latestPid > 0) _activePid = latestPid;
-
-                FeedText(text);
-                _readOffset = len;
-                _lastFileLength = len;
+                else if (len > _readOffset)
+                {
+                    var toRead = (int)Math.Min(len - _readOffset, InitialTailBytes);
+                    fs.Seek(_readOffset, SeekOrigin.Begin);
+                    var buf = new byte[toRead];
+                    var read = fs.Read(buf, 0, toRead);
+                    DecodeInPlace(buf.AsSpan(0, read));
+                    FeedText(Encoding.UTF8.GetString(buf, 0, read));
+                    _readOffset += read;
+                    _lastFileLength = len;
+                }
             }
-            else if (len > _readOffset)
+            catch (IOException)
             {
-                var toRead = (int)Math.Min(len - _readOffset, InitialTailBytes);
-                fs.Seek(_readOffset, SeekOrigin.Begin);
-                var buf = new byte[toRead];
-                var read = fs.Read(buf, 0, toRead);
-                DecodeInPlace(buf.AsSpan(0, read));
-                FeedText(Encoding.UTF8.GetString(buf, 0, read));
-                _readOffset += read;
-                _lastFileLength = len;
+                // Best-effort if the file is momentarily inaccessible.
             }
-        }
-        catch (IOException)
-        {
-            // Best-effort if the file is momentarily inaccessible.
-        }
 
-        return GetSnapshot(currentTickMs ?? (uint)Environment.TickCount);
+            return GetSnapshot(currentTickMs ?? (uint)Environment.TickCount);
+        }
     }
 
     /// <summary>Feeds decoded log text into the state machine (also usable directly in unit tests).</summary>
     public void FeedDecodedLog(string decodedText, int? targetPid = null)
     {
-        if (targetPid is { } p) _activePid = p;
-        else if (_activePid < 0)
+        lock (_sync)
         {
-            var latest = FindLatestPid(decodedText);
-            if (latest > 0) _activePid = latest;
+            if (targetPid is { } p) _activePid = p;
+            else if (_activePid < 0)
+            {
+                var latest = FindLatestPid(decodedText);
+                if (latest > 0) _activePid = latest;
+            }
+            FeedText(decodedText);
         }
-        FeedText(decodedText);
     }
 
     public NeteasePlaybackSnapshot? GetSnapshot(uint currentTickMs)
     {
-        if (!_hasState) return null;
-
-        var posMs = _accumulatedPositionMs;
-        if (_isPlaying)
+        lock (_sync)
         {
-            var delta = unchecked(currentTickMs - _lastPlayStartTickMs);
-            if (delta <= 7200_000) // < 2 hours sanity bound
-                posMs += delta;
+            if (!_hasState) return null;
+
+            var posMs = _accumulatedPositionMs;
+            if (_isPlaying)
+            {
+                var delta = unchecked(currentTickMs - _lastPlayStartTickMs);
+                if (delta <= 7200_000) // < 2 hours sanity bound
+                    posMs += delta;
+            }
+
+            var duration = _songId is { } id && _knownDurations.TryGetValue(id, out var d) ? d : (TimeSpan?)null;
+            if (duration is { TotalMilliseconds: > 0 } dur && posMs > dur.TotalMilliseconds)
+                posMs = dur.TotalMilliseconds;
+
+            return new NeteasePlaybackSnapshot(
+                _songId,
+                TimeSpan.FromMilliseconds(Math.Max(0, posMs)),
+                duration,
+                _isPlaying,
+                _lastEventTickMs);
         }
-
-        var duration = _songId is { } id && _knownDurations.TryGetValue(id, out var d) ? d : (TimeSpan?)null;
-        if (duration is { TotalMilliseconds: > 0 } dur && posMs > dur.TotalMilliseconds)
-            posMs = dur.TotalMilliseconds;
-
-        return new NeteasePlaybackSnapshot(
-            _songId,
-            TimeSpan.FromMilliseconds(Math.Max(0, posMs)),
-            duration,
-            _isPlaying,
-            _lastEventTickMs);
     }
 
     private void ResetState()
@@ -199,6 +211,8 @@ public sealed partial class NeteaseCloudMusicLogProbe
         _lastPlayStartTickMs = 0;
         _lastEventTickMs = 0;
         _isPlaying = false;
+        _isNativePlaying = false;
+        _hasSeenNativeAudioEvents = false;
         _hasState = false;
     }
 
@@ -253,6 +267,7 @@ public sealed partial class NeteaseCloudMusicLogProbe
                 _accumulatedPositionMs = 0;
                 _lastPlayStartTickMs = tickMs;
                 _isPlaying = false;
+                _isNativePlaying = false;
                 _hasState = true;
                 _lastEventTickMs = tickMs;
             }
@@ -268,6 +283,7 @@ public sealed partial class NeteaseCloudMusicLogProbe
                 _accumulatedPositionMs = 0;
                 _lastPlayStartTickMs = tickMs;
                 _isPlaying = false;
+                _isNativePlaying = false;
                 _lastEventTickMs = tickMs;
             }
             return;
@@ -327,12 +343,18 @@ public sealed partial class NeteaseCloudMusicLogProbe
             return;
         }
 
-        // 5) Play / Resume
-        if (IsPlayEvent(line))
+        // 5) Native Audio Engine Play / Pause (authoritative audio buffer clock).
+        // NetEase Cloud Music logs UI/SMTC pause ("[SMTCWrapper] SMTC status=1" / "【playing】,\"pause\"") immediately
+        // when the user clicks Pause, but performs a ~610 ms volume fade-out before actually pausing the native
+        // DirectSound buffer ("[INFO:audio_player.cpp(198)] Pause ..."). Stopping our clock on the early UI/SMTC pause
+        // event would discard ~610 ms of real audio playback on every pause/resume cycle.
+        if (IsNativePlayEvent(line))
         {
-            if (!_isPlaying)
+            _hasSeenNativeAudioEvents = true;
+            if (!_isPlaying || !_isNativePlaying)
             {
                 _isPlaying = true;
+                _isNativePlaying = true;
                 _lastPlayStartTickMs = tickMs;
             }
             _hasState = true;
@@ -340,33 +362,61 @@ public sealed partial class NeteaseCloudMusicLogProbe
             return;
         }
 
-        // 6) Pause
-        if (IsPauseEvent(line))
+        if (IsNativePauseEvent(line))
         {
+            _hasSeenNativeAudioEvents = true;
             if (_isPlaying)
             {
                 var elapsed = unchecked(tickMs - _lastPlayStartTickMs);
                 if (elapsed < 3600_000)
                     _accumulatedPositionMs += elapsed;
                 _isPlaying = false;
+                _isNativePlaying = false;
                 _lastPlayStartTickMs = tickMs;
             }
             _hasState = true;
             _lastEventTickMs = tickMs;
+            return;
+        }
+
+        // 6) Fallback to SMTC wrapper status only if the log stream contains no native audio_player.cpp events.
+        if (!_hasSeenNativeAudioEvents)
+        {
+            if (line.Contains("[SMTCWrapper] SMTC status=0", StringComparison.Ordinal))
+            {
+                if (!_isPlaying)
+                {
+                    _isPlaying = true;
+                    _lastPlayStartTickMs = tickMs;
+                }
+                _hasState = true;
+                _lastEventTickMs = tickMs;
+                return;
+            }
+
+            if (line.Contains("[SMTCWrapper] SMTC status=1", StringComparison.Ordinal))
+            {
+                if (_isPlaying)
+                {
+                    var elapsed = unchecked(tickMs - _lastPlayStartTickMs);
+                    if (elapsed < 3600_000)
+                        _accumulatedPositionMs += elapsed;
+                    _isPlaying = false;
+                    _lastPlayStartTickMs = tickMs;
+                }
+                _hasState = true;
+                _lastEventTickMs = tickMs;
+            }
         }
     }
 
-    private static bool IsPlayEvent(string line) =>
-        line.Contains("[SMTCWrapper] SMTC status=0", StringComparison.Ordinal) ||
-        line.Contains("\"native播放state\",1", StringComparison.Ordinal) ||
-        line.Contains("【playing】,\"resume\"", StringComparison.Ordinal) ||
-        (line.Contains("audio_player.cpp", StringComparison.Ordinal) && line.Contains("] Play ", StringComparison.Ordinal));
+    private static bool IsNativePlayEvent(string line) =>
+        line.Contains("audio_player.cpp", StringComparison.Ordinal) &&
+        line.Contains("] Play ", StringComparison.Ordinal);
 
-    private static bool IsPauseEvent(string line) =>
-        line.Contains("[SMTCWrapper] SMTC status=1", StringComparison.Ordinal) ||
-        line.Contains("【playing】,\"pause\"", StringComparison.Ordinal) ||
-        line.Contains("\"native播放state\",2", StringComparison.Ordinal) ||
-        (line.Contains("audio_player.cpp", StringComparison.Ordinal) && line.Contains("] Pause ", StringComparison.Ordinal));
+    private static bool IsNativePauseEvent(string line) =>
+        line.Contains("audio_player.cpp", StringComparison.Ordinal) &&
+        line.Contains("] Pause ", StringComparison.Ordinal);
 
     private static byte[] CreateDecodeTable()
     {

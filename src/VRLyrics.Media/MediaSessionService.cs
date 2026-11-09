@@ -64,6 +64,10 @@ public sealed class MediaSessionService : IAsyncDisposable
     private Task? _pollTask;
     private TrackInfo? _track;
     private volatile bool _ignoreBrowserSessions = true;
+    private long _lastPlaybackStateChangeTickMs;
+    private uint _lastSyncedProbeEventTickMs;
+    private bool _lastSyncedProbeIsPlaying;
+    private volatile bool _forceProbeSync = true;
 
     /// <summary>Raised (on a background thread) when the track changes. Argument may be null when nothing plays.</summary>
     public event Action<TrackInfo?>? TrackChanged;
@@ -183,6 +187,21 @@ public sealed class MediaSessionService : IAsyncDisposable
         {
             await Task.Delay(80).ConfigureAwait(false);
             try { SyncSessionState(s); } catch { }
+
+            // NetEase Cloud Music performs a ~610 ms audio fade-out on pause before logging native Pause;
+            // schedule a follow-up sync once the fade-out completes.
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(580, _cts.Token).ConfigureAwait(false);
+                    SyncSessionState(s);
+                }
+                catch
+                {
+                    // Ignore cancellation or disposed session.
+                }
+            });
         }
     }
 
@@ -526,6 +545,7 @@ public sealed class MediaSessionService : IAsyncDisposable
             _track = track;
         }
 
+        _forceProbeSync = true;
         _clock.Reset(TimeSpan.Zero, track?.Duration);
         TrackChanged?.Invoke(track);
     }
@@ -539,6 +559,8 @@ public sealed class MediaSessionService : IAsyncDisposable
         var was = _clock.IsPlaying;
         if (was != playing)
         {
+            _lastPlaybackStateChangeTickMs = Environment.TickCount64;
+            _forceProbeSync = true;
             _clock.SetPlaying(playing, rate);
             PlaybackStateChanged?.Invoke(playing);
         }
@@ -565,7 +587,24 @@ public sealed class MediaSessionService : IAsyncDisposable
         if (!IsNeteaseSession(s)) return;
         if (_neteaseProbe.Poll() is not { } snap) return;
 
-        _clock.SyncFromProbe(snap.Position, snap.Duration);
+        // While NetEase Cloud Music is in its ~610 ms pause fade-out window (SMTC already reported Paused,
+        // but audio_player.cpp has not logged Pause yet), wait for the native audio state to converge
+        // before snapping the clock, then snap with zero threshold on the transition event.
+        var stateTransitionPending = _clock.IsPlaying != snap.IsPlaying &&
+                                     unchecked(Environment.TickCount64 - _lastPlaybackStateChangeTickMs) < 900;
+        if (!stateTransitionPending)
+        {
+            var eventChanged = _forceProbeSync ||
+                               snap.LastEventTickMs != _lastSyncedProbeEventTickMs ||
+                               snap.IsPlaying != _lastSyncedProbeIsPlaying;
+            _clock.SyncFromProbe(
+                snap.Position,
+                snap.Duration,
+                eventChanged ? TimeSpan.Zero : TimeSpan.FromMilliseconds(45));
+            _forceProbeSync = false;
+            _lastSyncedProbeEventTickMs = snap.LastEventTickMs;
+            _lastSyncedProbeIsPlaying = snap.IsPlaying;
+        }
 
         lock (_lock)
         {

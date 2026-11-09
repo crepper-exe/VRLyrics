@@ -165,12 +165,17 @@ public sealed class LyricsOverlayController : IAsyncDisposable
                     // Never allow a UI preview listener exception to disrupt the VR overlay loop.
                 }
 
-                // 60 FPS (~16.6 ms) when playing, animating, tweaking settings, or polling VR controller grab in WorldLocked mode.
+                // 60 FPS (~16.6 ms) when playing, animating, tweaking settings, interacting with the VR Dashboard,
+                // or polling VR controller grab in WorldLocked mode.
                 var worldGrabListening = vrActive &&
                                          frame.Settings.AttachmentMode == OverlayAttachmentMode.WorldLocked &&
                                          frame.Settings.EnableWorldControllerGrab;
 
-                var targetFrameTime = (_renderer.IsAnimating || frame.IsPlaying || settingsChanged || worldGrabListening)
+                var targetFrameTime = (_renderer.IsAnimating ||
+                                       frame.IsPlaying ||
+                                       settingsChanged ||
+                                       worldGrabListening ||
+                                       _vrService.IsDashboardActive)
                     ? TimeSpan.FromMilliseconds(16.6)
                     : TimeSpan.FromMilliseconds(80);
 
