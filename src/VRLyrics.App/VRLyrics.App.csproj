@@ -10,6 +10,7 @@
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <AssemblyName>VRLyrics</AssemblyName>
     <RootNamespace>VRLyrics.App</RootNamespace>
+    <Version>2.2.0</Version>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
   </PropertyGroup>
 
