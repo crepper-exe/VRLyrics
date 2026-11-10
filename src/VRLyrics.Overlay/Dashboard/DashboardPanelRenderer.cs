@@ -155,7 +155,7 @@ public sealed class DashboardPanelRenderer : IDisposable
     {
         var s = state.Frame.Settings;
         var mediaPlaying = state.Frame.MediaIsPlaying ?? (state.Frame.Track is not null && state.Frame.IsPlaying);
-        BuildButtons(s, state.IsDemoLoopEnabled, mediaPlaying);
+        BuildButtons(s, state.IsDemoLoopEnabled, mediaPlaying, state.Frame.IsAutoHidden);
 
         _canvas.Clear(SKColors.Transparent);
 
@@ -285,7 +285,7 @@ public sealed class DashboardPanelRenderer : IDisposable
         return data.ToArray();
     }
 
-    private void BuildButtons(LyricsOverlaySettings s, bool isDemoLoop, bool isMediaPlaying = false)
+    private void BuildButtons(LyricsOverlaySettings s, bool isDemoLoop, bool isMediaPlaying = false, bool isAutoHidden = false)
     {
         _buttons.Clear();
         _sliders.Clear();
@@ -309,11 +309,16 @@ public sealed class DashboardPanelRenderer : IDisposable
             "下一首"));
 
         // --- Header right toggle switches (Y: 32..104, right-aligned to section card edge X=1172) ---
+        var enabledSubLabel = !s.Enabled
+            ? "已隐藏"
+            : isAutoHidden
+                ? "无播放休眠中"
+                : "已开启";
         _buttons.Add(new DashboardButtonItem(
             DashboardAction.ToggleEnabled,
             new SKRect(752, 32, 956, 104),
             "显示 VR 歌词",
-            s.Enabled ? "已开启" : "已隐藏",
+            enabledSubLabel,
             IsSelected: s.Enabled,
             IsPrimary: true));
 

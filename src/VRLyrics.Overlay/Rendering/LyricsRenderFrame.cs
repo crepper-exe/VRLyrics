@@ -29,6 +29,9 @@ public sealed record LyricsRenderFrame
     /// <summary>True when a VR controller is actively dragging the world-locked overlay in 3D space.</summary>
     public bool IsWorldGrabActive { get; init; }
 
+    /// <summary>True when the VR overlay is currently hidden due to no playback activity for <see cref="LyricsOverlaySettings.AutoHideDelaySeconds"/>.</summary>
+    public bool IsAutoHidden { get; init; }
+
     public LyricsOverlaySettings Settings { get; init; } = new();
 
     /// <summary>Playback position with <see cref="LyricsOverlaySettings.GlobalOffsetMs"/> and per-track offset applied.</summary>

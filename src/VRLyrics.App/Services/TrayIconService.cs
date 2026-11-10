@@ -31,6 +31,7 @@ public sealed class TrayIconService : IDisposable
     private readonly ToolStripMenuItem _srcQqMusicItem;
     private readonly ToolStripMenuItem _srcLrclibItem;
     private readonly ToolStripMenuItem _srcLocalItem;
+    private readonly ToolStripMenuItem _autoHideIdleItem;
     private readonly ToolStripMenuItem _ignoreBrowserItem;
     private readonly ToolStripMenuItem _autoStartItem;
     private readonly nint _hIcon;
@@ -115,6 +116,13 @@ public sealed class TrayIconService : IDisposable
         var reloadItem = new ToolStripMenuItem("重新获取当前歌曲歌词");
         reloadItem.Click += (_, _) => _runtime.ReloadCurrentLyrics(bypassCache: true);
 
+        _autoHideIdleItem = new ToolStripMenuItem("无播放活动 5 秒后自动隐藏")
+        {
+            CheckOnClick = false
+        };
+        _autoHideIdleItem.Click += (_, _) =>
+            _runtime.Settings.Update(s => s with { AutoHideWhenIdle = !s.AutoHideWhenIdle });
+
         _ignoreBrowserItem = new ToolStripMenuItem("屏蔽浏览器播放活动")
         {
             CheckOnClick = false
@@ -141,6 +149,7 @@ public sealed class TrayIconService : IDisposable
             nextTrackItem,
             new ToolStripSeparator(),
             _enabledItem,
+            _autoHideIdleItem,
             modeMenu,
             offsetMenu,
             sourceMenu,
@@ -213,6 +222,7 @@ public sealed class TrayIconService : IDisposable
                                && !_srcQqMusicItem.Checked
                                && !_srcLrclibItem.Checked
                                && !_srcLocalItem.Checked;
+        _autoHideIdleItem.Checked = cfg.AutoHideWhenIdle;
         _ignoreBrowserItem.Checked = cfg.IgnoreBrowserMediaSessions;
         _autoStartItem.Checked = cfg.AutoStartWithSteamVr;
     }

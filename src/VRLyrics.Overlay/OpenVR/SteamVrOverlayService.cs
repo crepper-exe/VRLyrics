@@ -210,7 +210,11 @@ public sealed class SteamVrOverlayService : IDisposable
     /// Updates overlay visibility, width, curvature, opacity and 3D transform according to <paramref name="settings"/>,
     /// including live VR controller grab-and-drag when in <see cref="OverlayAttachmentMode.WorldLocked"/> mode.
     /// </summary>
-    public void ApplySettings(LyricsOverlaySettings settings, float deltaTimeSeconds = 1f / 60f)
+    public void ApplySettings(
+        LyricsOverlaySettings settings,
+        float deltaTimeSeconds = 1f / 60f,
+        bool isAutoHidden = false,
+        float opacityScale = 1f)
     {
         if (!IsConnected) return;
         var overlay = Valve.VR.OpenVR.Overlay;
@@ -228,7 +232,7 @@ public sealed class SteamVrOverlayService : IDisposable
             catch { }
         }
 
-        if (!settings.Enabled)
+        if (!settings.Enabled || isAutoHidden || opacityScale <= 0.005f)
         {
             _grabInteractor.Reset();
             overlay.HideOverlay(_overlayHandle);
@@ -237,7 +241,7 @@ public sealed class SteamVrOverlayService : IDisposable
 
         overlay.ShowOverlay(_overlayHandle);
         overlay.SetOverlayWidthInMeters(_overlayHandle, Math.Clamp(settings.WidthInMeters, 0.15f, 3.5f));
-        overlay.SetOverlayAlpha(_overlayHandle, Math.Clamp(settings.Opacity, 0.05f, 1.0f));
+        overlay.SetOverlayAlpha(_overlayHandle, Math.Clamp(settings.Opacity * opacityScale, 0.01f, 1.0f));
         overlay.SetOverlayCurvature(_overlayHandle, Math.Clamp(settings.Curvature, 0.0f, 0.45f));
 
         switch (settings.AttachmentMode)

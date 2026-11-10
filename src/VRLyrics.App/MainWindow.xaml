@@ -933,6 +933,20 @@
                             <StackPanel>
                                 <DockPanel Margin="0,0,0,14">
                                     <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="未捕获到播放活动 5 秒后自动隐藏歌词" FontSize="13.5" FontWeight="Medium" Foreground="{StaticResource Text1Brush}" />
+                                        <TextBlock Text="当音乐暂停、停止或未检测到播放器满 5 秒时自动隐藏 VR 歌词叠加层，恢复播放时立即唤醒显示" FontSize="12" Foreground="{StaticResource Text3Brush}" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                    <CheckBox x:Name="ChkAutoHideWhenIdle"
+                                              HorizontalAlignment="Right"
+                                              VerticalAlignment="Center"
+                                              Checked="OnAutoHideWhenIdleChanged"
+                                              Unchecked="OnAutoHideWhenIdleChanged" />
+                                </DockPanel>
+
+                                <Border Style="{StaticResource RowDivider}" Margin="0,0,0,14" />
+
+                                <DockPanel Margin="0,0,0,14">
+                                    <StackPanel VerticalAlignment="Center">
                                         <TextBlock Text="屏蔽来自浏览器的播放活动" FontSize="13.5" FontWeight="Medium" Foreground="{StaticResource Text1Brush}" />
                                         <TextBlock Text="忽略 Edge、Chrome、Firefox 等网页视频与直播声音，仅跟随独立音乐软件" FontSize="12" Foreground="{StaticResource Text3Brush}" Margin="0,2,0,0" />
                                     </StackPanel>

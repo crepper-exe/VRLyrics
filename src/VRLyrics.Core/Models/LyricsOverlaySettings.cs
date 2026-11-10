@@ -124,6 +124,12 @@ public sealed record LyricsOverlaySettings
     /// <summary>Ignore SMTC playback sessions originating from web browsers (Edge, Chrome, Firefox, etc.).</summary>
     public bool IgnoreBrowserMediaSessions { get; init; } = true;
 
+    /// <summary>Automatically hide the VR lyrics overlay when no playback activity is captured for <see cref="AutoHideDelaySeconds"/>.</summary>
+    public bool AutoHideWhenIdle { get; init; } = true;
+
+    /// <summary>Seconds of inactivity (paused or no active media session) before auto-hiding the VR lyrics overlay.</summary>
+    public int AutoHideDelaySeconds { get; init; } = 5;
+
     /// <summary>Optional user-configured directories to scan for local <c>.lrc</c> files.</summary>
     public IReadOnlyList<string> LocalLyricsFolders { get; init; } = [];
 

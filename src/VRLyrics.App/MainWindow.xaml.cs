@@ -266,6 +266,7 @@ public partial class MainWindow : Window
                                      && RbSourceLrclib.IsChecked != true
                                      && RbSourceLocal.IsChecked != true;
 
+            ChkAutoHideWhenIdle.IsChecked = s.AutoHideWhenIdle;
             ChkIgnoreBrowserSessions.IsChecked = s.IgnoreBrowserMediaSessions;
 
             ChkAutoStartWithSteamVr.IsChecked = s.AutoStartWithSteamVr;
@@ -320,7 +321,14 @@ public partial class MainWindow : Window
             ? "M6 19h4V5H6v14zm8-14v14h4V5h-4z"
             : "M8 5v14l11-7z");
 
-        UpdateTrackOffsetControls(_runtime.Settings.Current);
+        var cfg = _runtime.Settings.Current;
+        PreviewMetaText.Text = !cfg.Enabled
+            ? $"{cfg.TextureWidth} × {cfg.TextureHeight} · VR 叠加层已手动隐藏"
+            : _runtime.Overlay.IsAutoHidden
+                ? $"{cfg.TextureWidth} × {cfg.TextureHeight} · 无播放活动满 {cfg.AutoHideDelaySeconds}s，VR 叠加层已自动隐藏（播放即唤醒）"
+                : $"{cfg.TextureWidth} × {cfg.TextureHeight} · 60 FPS · 与 VR 头显 1:1 同步";
+
+        UpdateTrackOffsetControls(cfg);
         UpdateManifestStatusText();
     }
 
@@ -856,6 +864,13 @@ public partial class MainWindow : Window
             : RbSourceLocal.IsChecked == true ? "LocalLRC"
             : "Auto";
         _runtime.SwitchLyricsProvider(provider);
+    }
+
+    private void OnAutoHideWhenIdleChanged(object sender, RoutedEventArgs e)
+    {
+        if (_suppressUiEvents || !IsLoaded) return;
+        var autoHide = ChkAutoHideWhenIdle.IsChecked == true;
+        _runtime.Settings.Update(s => s with { AutoHideWhenIdle = autoHide });
     }
 
     private void OnIgnoreBrowserSessionsChanged(object sender, RoutedEventArgs e)

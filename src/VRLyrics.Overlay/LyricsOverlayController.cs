@@ -24,6 +24,11 @@ public sealed class LyricsOverlayController : IAsyncDisposable
     private DateTimeOffset _lastConnectAttempt = DateTimeOffset.MinValue;
     private TimeSpan _lastLoopTimestamp;
     private LyricsOverlaySettings? _lastSettings;
+    private TimeSpan? _lastActivityTimestamp;
+    private string? _lastTrackKey;
+    private TimeSpan _lastPlaybackPosition;
+    private bool _hasLastPlaybackPosition;
+    private volatile bool _isAutoHidden;
 
     public LyricsOverlayController(Func<LyricsRenderFrame> frameProvider)
     {
@@ -39,6 +44,9 @@ public sealed class LyricsOverlayController : IAsyncDisposable
     public bool IsWorldGrabHovered => _vrService.IsWorldGrabHovered;
 
     public bool IsWorldGrabActive => _vrService.IsWorldGrabActive;
+
+    /// <summary>True when the VR overlay is currently hidden after <see cref="LyricsOverlaySettings.AutoHideDelaySeconds"/> of no playback activity.</summary>
+    public bool IsAutoHidden => _isAutoHidden;
 
     public bool IsDemoLoopEnabled { get; set; }
 
@@ -111,6 +119,63 @@ public sealed class LyricsOverlayController : IAsyncDisposable
     public SKBitmap RenderSingleFrame(LyricsRenderFrame frame) =>
         _renderer.RenderFrame(frame with { FrameTimestamp = _clock.Elapsed });
 
+    /// <summary>
+    /// Evaluates whether the VR lyrics overlay should auto-hide after <see cref="LyricsOverlaySettings.AutoHideDelaySeconds"/>
+    /// without playback activity, and computes a smooth opacity fade-out scale.
+    /// </summary>
+    public (bool IsAutoHidden, float OpacityScale) UpdateAutoHideState(
+        LyricsRenderFrame rawFrame,
+        TimeSpan timestamp,
+        bool settingsChanged = false,
+        bool isGrabInteracting = false)
+    {
+        var trackChanged = rawFrame.Track is not null &&
+                           !string.Equals(rawFrame.Track.Key, _lastTrackKey, StringComparison.Ordinal);
+        var positionJumped = rawFrame.Track is not null &&
+                             _hasLastPlaybackPosition &&
+                             (rawFrame.PlaybackPosition - _lastPlaybackPosition).Duration() > TimeSpan.FromMilliseconds(80);
+
+        _lastTrackKey = rawFrame.Track?.Key;
+        _lastPlaybackPosition = rawFrame.PlaybackPosition;
+        _hasLastPlaybackPosition = rawFrame.Track is not null;
+
+        var hasActivity = rawFrame.IsPlaying ||
+                          IsDemoLoopEnabled ||
+                          trackChanged ||
+                          positionJumped ||
+                          isGrabInteracting ||
+                          settingsChanged;
+
+        if (!rawFrame.Settings.AutoHideWhenIdle || rawFrame.Settings.AutoHideDelaySeconds <= 0 || hasActivity)
+        {
+            _lastActivityTimestamp = timestamp;
+            _isAutoHidden = false;
+            return (false, 1.0f);
+        }
+
+        _lastActivityTimestamp ??= timestamp;
+        var idleElapsed = timestamp - _lastActivityTimestamp.Value;
+        var delay = TimeSpan.FromSeconds(Math.Clamp(rawFrame.Settings.AutoHideDelaySeconds, 1, 3600));
+        const double fadeDurationSeconds = 0.25;
+
+        if (idleElapsed < delay)
+        {
+            _isAutoHidden = false;
+            return (false, 1.0f);
+        }
+
+        var fadeElapsed = (idleElapsed - delay).TotalSeconds;
+        if (fadeElapsed < fadeDurationSeconds)
+        {
+            _isAutoHidden = false;
+            var scale = Math.Clamp(1.0f - (float)(fadeElapsed / fadeDurationSeconds), 0.01f, 1.0f);
+            return (false, scale);
+        }
+
+        _isAutoHidden = true;
+        return (true, 0.0f);
+    }
+
     private async Task RunLoopAsync(CancellationToken ct)
     {
         while (!ct.IsCancellationRequested)
@@ -132,25 +197,33 @@ public sealed class LyricsOverlayController : IAsyncDisposable
                 }
 
                 var rawFrame = _frameProvider();
-                var settingsChanged = !Equals(_lastSettings, rawFrame.Settings);
+                var settingsChanged = _lastSettings is not null && !Equals(_lastSettings, rawFrame.Settings);
                 _lastSettings = rawFrame.Settings;
+
+                var isGrabInteracting = _vrService.IsWorldGrabHovered || _vrService.IsWorldGrabActive;
+                var (isAutoHidden, opacityScale) = UpdateAutoHideState(
+                    rawFrame,
+                    frameStart,
+                    settingsChanged,
+                    isGrabInteracting);
 
                 var vrActive = _vrService.IsConnected && _vrService.PollEvents();
                 if (vrActive)
-                    _vrService.ApplySettings(rawFrame.Settings, dtSeconds);
+                    _vrService.ApplySettings(rawFrame.Settings, dtSeconds, isAutoHidden, opacityScale);
 
                 var frame = rawFrame with
                 {
                     FrameTimestamp = frameStart,
                     IsWorldGrabHovered = _vrService.IsWorldGrabHovered,
                     IsWorldGrabActive = _vrService.IsWorldGrabActive,
+                    IsAutoHidden = isAutoHidden,
                 };
 
                 var bitmap = _renderer.RenderFrame(frame);
 
                 if (vrActive)
                 {
-                    if (frame.Settings.Enabled)
+                    if (frame.Settings.Enabled && !isAutoHidden)
                         _vrService.SubmitFrame(bitmap);
 
                     _vrService.UpdateDashboard(frame, IsDemoLoopEnabled);
@@ -165,14 +238,17 @@ public sealed class LyricsOverlayController : IAsyncDisposable
                     // Never allow a UI preview listener exception to disrupt the VR overlay loop.
                 }
 
-                // 60 FPS (~16.6 ms) when playing, animating, tweaking settings, interacting with the VR Dashboard,
+                // 60 FPS (~16.6 ms) when playing, animating, fading out, tweaking settings, interacting with the VR Dashboard,
                 // or polling VR controller grab in WorldLocked mode.
                 var worldGrabListening = vrActive &&
+                                         !isAutoHidden &&
                                          frame.Settings.AttachmentMode == OverlayAttachmentMode.WorldLocked &&
                                          frame.Settings.EnableWorldControllerGrab;
+                var isFadingOut = !isAutoHidden && opacityScale < 1.0f;
 
                 var targetFrameTime = (_renderer.IsAnimating ||
                                        frame.IsPlaying ||
+                                       isFadingOut ||
                                        settingsChanged ||
                                        worldGrabListening ||
                                        _vrService.IsDashboardActive)

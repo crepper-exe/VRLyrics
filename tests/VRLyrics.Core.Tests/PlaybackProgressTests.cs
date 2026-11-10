@@ -1,5 +1,8 @@
 using System.Text;
+using VRLyrics.Core.Models;
 using VRLyrics.Media;
+using VRLyrics.Overlay;
+using VRLyrics.Overlay.Rendering;
 
 namespace VRLyrics.Core.Tests;
 
@@ -135,5 +138,73 @@ public sealed class PlaybackProgressTests
         Assert.NotNull(snap);
         Assert.True(snap.Value.IsPlaying);
         Assert.Equal(174047, snap.Value.Position.TotalMilliseconds, precision: 1);
+    }
+
+    [Fact]
+    public void OverlayAutoHide_HidesAfter5SecondsOfNoPlaybackActivity_AndWakesImmediatelyOnResumeOrSeek()
+    {
+        var track = new TrackInfo("晴天", "周杰伦", "叶惠美", TimeSpan.FromMinutes(4));
+        var settings = new LyricsOverlaySettings { AutoHideWhenIdle = true, AutoHideDelaySeconds = 5 };
+        awaitingFrame();
+
+        void awaitingFrame()
+        {
+            var controller = new LyricsOverlayController(() => new LyricsRenderFrame());
+
+            // t = 0.0s: playing -> visible
+            var s0 = controller.UpdateAutoHideState(
+                new LyricsRenderFrame { Track = track, IsPlaying = true, PlaybackPosition = TimeSpan.FromSeconds(10), Settings = settings },
+                TimeSpan.FromSeconds(0.0));
+            Assert.False(s0.IsAutoHidden);
+            Assert.Equal(1.0f, s0.OpacityScale);
+
+            // t = 1.0s: playback pauses -> countdown starts from last playing frame (0.0s), still visible at 4.9s
+            var s1 = controller.UpdateAutoHideState(
+                new LyricsRenderFrame { Track = track, IsPlaying = false, PlaybackPosition = TimeSpan.FromSeconds(10), Settings = settings },
+                TimeSpan.FromSeconds(4.9));
+            Assert.False(s1.IsAutoHidden);
+            Assert.Equal(1.0f, s1.OpacityScale);
+
+            // t = 5.1s: in 0.25s smooth fade-out window
+            var sFade = controller.UpdateAutoHideState(
+                new LyricsRenderFrame { Track = track, IsPlaying = false, PlaybackPosition = TimeSpan.FromSeconds(10), Settings = settings },
+                TimeSpan.FromSeconds(5.1));
+            Assert.False(sFade.IsAutoHidden);
+            Assert.InRange(sFade.OpacityScale, 0.1f, 0.9f);
+
+            // t = 5.3s: >= 5.25s of no playback activity -> auto-hidden
+            var sHidden = controller.UpdateAutoHideState(
+                new LyricsRenderFrame { Track = track, IsPlaying = false, PlaybackPosition = TimeSpan.FromSeconds(10), Settings = settings },
+                TimeSpan.FromSeconds(5.3));
+            Assert.True(sHidden.IsAutoHidden);
+            Assert.True(controller.IsAutoHidden);
+            Assert.Equal(0.0f, sHidden.OpacityScale);
+
+            // t = 8.0s: playback resumes -> immediately wakes up with full opacity
+            var sWake = controller.UpdateAutoHideState(
+                new LyricsRenderFrame { Track = track, IsPlaying = true, PlaybackPosition = TimeSpan.FromSeconds(10.1), Settings = settings },
+                TimeSpan.FromSeconds(8.0));
+            Assert.False(sWake.IsAutoHidden);
+            Assert.False(controller.IsAutoHidden);
+            Assert.Equal(1.0f, sWake.OpacityScale);
+        }
+    }
+
+    [Fact]
+    public void OverlayAutoHide_WhenDisabled_NeverHidesWhenIdle()
+    {
+        var settings = new LyricsOverlaySettings { AutoHideWhenIdle = false, AutoHideDelaySeconds = 5 };
+        var controller = new LyricsOverlayController(() => new LyricsRenderFrame());
+
+        controller.UpdateAutoHideState(
+            new LyricsRenderFrame { IsPlaying = false, Settings = settings },
+            TimeSpan.FromSeconds(0));
+
+        var after30s = controller.UpdateAutoHideState(
+            new LyricsRenderFrame { IsPlaying = false, Settings = settings },
+            TimeSpan.FromSeconds(30));
+
+        Assert.False(after30s.IsAutoHidden);
+        Assert.Equal(1.0f, after30s.OpacityScale);
     }
 }
